@@ -1,0 +1,132 @@
+/* Custom Tailwind styles */
+
+/* Dark mode utilities */
+.dark {
+  color-scheme: dark;
+}
+
+/* Custom scrollbar for order book */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Animation for connection status indicator */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Order book styles */
+.bid-row, .ask-row {
+  position: relative;
+}
+
+.depth-bar {
+  position: absolute;
+  height: 100%;
+  top: 0;
+  z-index: 0;
+}
+
+.bid-bar {
+  right: 0;
+  background-color: rgba(72, 187, 120, 0.2);
+}
+
+.dark .bid-bar {
+  background-color: rgba(72, 187, 120, 0.1);
+}
+
+.ask-bar {
+  left: 0;
+  background-color: rgba(245, 101, 101, 0.2);
+}
+
+.dark .ask-bar {
+  background-color: rgba(245, 101, 101, 0.1);
+}
+
+/* ShadCN-inspired component styles */
+.shadcn-button {
+  @apply px-4 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900;
+}
+
+.shadcn-button-primary {
+  @apply shadcn-button bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600;
+}
+
+.shadcn-button-secondary {
+  @apply shadcn-button bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600;
+}
+
+.shadcn-card {
+  @apply bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden;
+}
+
+.shadcn-card-header {
+  @apply p-4 border-b border-gray-200 dark:border-gray-700;
+}
+
+.shadcn-card-title {
+  @apply text-xl font-semibold;
+}
+
+.shadcn-card-description {
+  @apply text-sm text-gray-500 dark:text-gray-400 mt-1;
+}
+
+.shadcn-card-content {
+  @apply p-4;
+}
+
+/* Toast notification styles */
+.toast {
+  @apply fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 transform transition-transform duration-300 ease-in-out;
+}
+
+.toast-success {
+  @apply toast bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100;
+}
+
+.toast-error {
+  @apply toast bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-100;
+}
+
+.toast-info {
+  @apply toast bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100;
+}

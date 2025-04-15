@@ -1,0 +1,82 @@
+server:
+  host: 0.0.0.0
+  port: 8000
+  uiPort: 5000
+  shutdownTimeout: 5s
+  readTimeout: 10s
+  writeTimeout: 10s
+  enableCORS: true
+  allowedOrigins:
+    - "*"
+
+feeds:
+  - name: binance
+    type: websocket
+    url: wss://stream.binance.com:9443/ws
+    subscriptions:
+      - btcusdt@depth
+      - ethusdt@depth
+      - btcusdt@trade
+      - ethusdt@trade
+    symbols:
+      - BTCUSDT
+      - ETHUSDT
+
+  - name: coinbase
+    type: websocket
+    url: wss://ws-feed.pro.coinbase.com
+    subscriptions:
+      - level2
+      - matches
+    symbols:
+      - BTC-USD
+      - ETH-USD
+
+  - name: kraken
+    type: websocket
+    url: wss://ws.kraken.com
+    subscriptions:
+      - book
+      - trade
+    symbols:
+      - XBT/USD
+      - ETH/USD
+
+strategies:
+  arbitrage:
+    name: CrossExchangeArbitrage
+    symbols:
+      - BTCUSD
+      - ETHUSD
+    exchanges:
+      - binance
+      - coinbase
+      - kraken
+    updateInterval: 1s
+    minimumSpread: 0.1
+    maxSlippage: 0.05
+    minProfitThreshold: 0.2
+    maxExecutionLatency: 500
+    simultaneousExchanges: 3
+    exchangeFees:
+      binance: 0.001
+      coinbase: 0.005
+      kraken: 0.0026
+    riskLimit: 1000.0
+
+simulation:
+  paperTrading:
+    enabled: true
+    initialBalance:
+      USD: 10000.0
+      BTC: 0.5
+      ETH: 5.0
+    latencySimulation: true
+    baseLatency: 50
+    randomLatency: 20
+    slippageModel: fixed
+    fixedSlippage: 0.05
+    exchangeFees:
+      binance: 0.001
+      coinbase: 0.005
+      kraken: 0.0026
