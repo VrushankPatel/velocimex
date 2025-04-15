@@ -50,6 +50,8 @@ func (m *Manager) Connect() error {
                         feed, err = NewWebSocketFeed(config, m.normalizer)
                 case "fix":
                         feed, err = NewFIXFeed(config, m.normalizer)
+                case "stock":
+                        feed, err = NewStockMarketFeed(config, m.normalizer)
                 default:
                         return fmt.Errorf("unsupported feed type: %s", config.Type)
                 }

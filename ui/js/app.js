@@ -253,6 +253,13 @@ function updateStrategyData(data) {
 
 // Initialize the performance chart
 function initializeChart() {
+    // Determine if dark mode is active
+    const isDarkMode = settings.theme === 'dark';
+    
+    // Set colors based on theme
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const textColor = isDarkMode ? '#9ca3af' : '#6b7280';
+    
     const datasets = [
         {
             label: 'Profit/Loss',
@@ -261,6 +268,15 @@ function initializeChart() {
             backgroundColor: 'rgba(34, 197, 94, 0.1)',
             fill: true,
             tension: 0.4
+        },
+        {
+            label: 'Drawdown',
+            data: [],
+            borderColor: 'rgb(239, 68, 68)',
+            backgroundColor: 'rgba(239, 68, 68, 0.05)',
+            fill: true,
+            tension: 0.4,
+            hidden: true
         }
     ];
     
@@ -272,22 +288,42 @@ function initializeChart() {
                 type: 'time',
                 time: {
                     unit: 'minute'
+                },
+                grid: {
+                    color: gridColor
+                },
+                ticks: {
+                    color: textColor
                 }
             },
             y: {
                 title: {
                     display: true,
-                    text: 'Profit/Loss'
+                    text: 'Profit/Loss',
+                    color: textColor
+                },
+                grid: {
+                    color: gridColor
+                },
+                ticks: {
+                    color: textColor
                 }
             }
         },
         plugins: {
             tooltip: {
                 mode: 'index',
-                intersect: false
+                intersect: false,
+                titleColor: textColor,
+                bodyColor: textColor,
+                backgroundColor: isDarkMode ? 'rgba(31, 41, 55, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+                borderColor: isDarkMode ? 'rgba(75, 85, 99, 1)' : 'rgba(229, 231, 235, 1)'
             },
             legend: {
-                position: 'top'
+                position: 'top',
+                labels: {
+                    color: textColor
+                }
             }
         }
     };
@@ -421,8 +457,28 @@ function applySettings() {
     // Apply theme
     if (settings.theme === 'dark') {
         document.body.classList.add('dark-theme');
+        // Update chart colors for dark theme
+        if (chartInstance) {
+            chartInstance.options.scales.x.grid.color = 'rgba(255, 255, 255, 0.1)';
+            chartInstance.options.scales.y.grid.color = 'rgba(255, 255, 255, 0.1)';
+            chartInstance.options.scales.x.ticks.color = '#9ca3af';
+            chartInstance.options.scales.y.ticks.color = '#9ca3af';
+            chartInstance.update();
+        }
+        // Update status and styling
+        console.log('Dark theme applied');
     } else {
         document.body.classList.remove('dark-theme');
+        // Update chart colors for light theme
+        if (chartInstance) {
+            chartInstance.options.scales.x.grid.color = 'rgba(0, 0, 0, 0.1)';
+            chartInstance.options.scales.y.grid.color = 'rgba(0, 0, 0, 0.1)';
+            chartInstance.options.scales.x.ticks.color = '#6b7280';
+            chartInstance.options.scales.y.ticks.color = '#6b7280';
+            chartInstance.update();
+        }
+        // Update status and styling
+        console.log('Light theme applied');
     }
     
     // If we have orderbook data, update it with new depth
