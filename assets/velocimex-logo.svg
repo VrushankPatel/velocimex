@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="500" viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background -->
+    <defs>
+        <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#2d3748;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#4a90e2;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#357abd;stop-opacity:1" />
+        </linearGradient>
+        <!-- Text Gradient -->
+        <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#4a90e2;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#357abd;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+
+    <!-- Main Circle -->
+    <circle cx="200" cy="200" r="190" fill="url(#bgGradient)" />
+    
+    <!-- Outer Ring with Gradient -->
+    <circle cx="200" cy="200" r="190" 
+            stroke="url(#accentGradient)" 
+            stroke-width="4" 
+            fill="none" />
+
+    <!-- Modern V Shape -->
+    <path d="M120,280 L200,100 L280,280" 
+          stroke="url(#accentGradient)" 
+          stroke-width="16" 
+          fill="none" 
+          stroke-linecap="round"
+          stroke-linejoin="round" />
+
+    <!-- Dynamic Lines -->
+    <g stroke="#4a90e2" stroke-width="3" opacity="0.6">
+        <line x1="160" y1="240" x2="240" y2="240" stroke-dasharray="1,8" />
+        <line x1="170" y1="260" x2="230" y2="260" stroke-dasharray="1,6" />
+    </g>
+
+    <!-- Accent Circles -->
+    <circle cx="200" cy="100" r="8" fill="#4a90e2" />
+    <circle cx="120" cy="280" r="8" fill="#4a90e2" />
+    <circle cx="280" cy="280" r="8" fill="#4a90e2" />
+
+    <!-- Subtle Glow Effect -->
+    <circle cx="200" cy="200" r="190" 
+            stroke="#4a90e2" 
+            stroke-width="1" 
+            fill="none" 
+            opacity="0.2" />
+
+    <!-- Title Text -->
+    <text x="200" y="450" 
+          font-family="Arial, sans-serif" 
+          font-size="48" 
+          font-weight="bold"
+          fill="url(#textGradient)"
+          text-anchor="middle"
+          letter-spacing="4">VELOCIMAX</text>
+</svg> 

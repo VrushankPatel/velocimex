@@ -1,0 +1,101 @@
+/* Custom styles for Velocimex documentation */
+
+/* Improve code block styling */
+div[class^='highlight'] pre {
+    padding: 1em;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+}
+
+/* Dark mode code blocks */
+.highlight {
+    background: #2d2d2d;
+}
+
+/* Improve table styling */
+table.docutils {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 1em;
+}
+
+table.docutils td, table.docutils th {
+    padding: 8px;
+    border: 1px solid #ddd;
+}
+
+table.docutils th {
+    background-color: #f5f5f5;
+}
+
+/* Improve heading hierarchy */
+h1 {
+    border-bottom: 2px solid #2980B9;
+    padding-bottom: 0.3em;
+}
+
+h2 {
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.2em;
+}
+
+/* Improve note and warning boxes */
+.admonition {
+    padding: 12px;
+    margin-bottom: 12px;
+    border-left: 6px solid #2980B9;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.admonition.warning {
+    border-left-color: #f0ad4e;
+}
+
+.admonition.danger {
+    border-left-color: #d9534f;
+}
+
+/* Improve navigation sidebar */
+.wy-nav-side {
+    background: #343131;
+}
+
+.wy-side-nav-search {
+    background-color: #2980B9;
+}
+
+/* Improve code copy button */
+.copybtn {
+    opacity: 0.3;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.copybtn:hover {
+    opacity: 1;
+}
+
+/* Improve API documentation */
+dl.py.method, dl.py.class, dl.py.function {
+    padding: 1em;
+    margin: 1em 0;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+
+/* Improve search box */
+.wy-side-nav-search input[type="text"] {
+    border-radius: 4px;
+    padding: 6px 12px;
+}
+
+/* Improve mobile responsiveness */
+@media screen and (max-width: 768px) {
+    .wy-nav-side {
+        width: 300px;
+    }
+    
+    .wy-nav-content-wrap {
+        margin-left: 300px;
+    }
+} 

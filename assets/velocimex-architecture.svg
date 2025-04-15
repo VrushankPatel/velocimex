@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background -->
+    <rect width="800" height="600" fill="#1a1a1a" />
+    
+    <!-- Title -->
+    <text x="400" y="40" font-family="Arial" font-size="24" fill="#ffffff" text-anchor="middle">Velocimex HFT Architecture</text>
+    
+    <!-- Market Feeds -->
+    <rect x="50" y="100" width="200" height="80" rx="10" fill="#2d3748" />
+    <text x="150" y="145" font-family="Arial" font-size="16" fill="#ffffff" text-anchor="middle">Market Feeds</text>
+    
+    <!-- Normalizer -->
+    <rect x="300" y="100" width="200" height="80" rx="10" fill="#2d3748" />
+    <text x="400" y="145" font-family="Arial" font-size="16" fill="#ffffff" text-anchor="middle">Normalizer</text>
+    
+    <!-- Order Book -->
+    <rect x="550" y="100" width="200" height="80" rx="10" fill="#2d3748" />
+    <text x="650" y="145" font-family="Arial" font-size="16" fill="#ffffff" text-anchor="middle">Order Book</text>
+    
+    <!-- Strategy Engine -->
+    <rect x="300" y="250" width="200" height="80" rx="10" fill="#2d3748" />
+    <text x="400" y="295" font-family="Arial" font-size="16" fill="#ffffff" text-anchor="middle">Strategy Engine</text>
+    
+    <!-- Order Manager -->
+    <rect x="550" y="250" width="200" height="80" rx="10" fill="#2d3748" />
+    <text x="650" y="295" font-family="Arial" font-size="16" fill="#ffffff" text-anchor="middle">Order Manager</text>
+    
+    <!-- Risk Manager -->
+    <rect x="300" y="400" width="200" height="80" rx="10" fill="#2d3748" />
+    <text x="400" y="445" font-family="Arial" font-size="16" fill="#ffffff" text-anchor="middle">Risk Manager</text>
+    
+    <!-- Arrows -->
+    <line x1="250" y1="140" x2="300" y2="140" stroke="#4a5568" stroke-width="2" />
+    <line x1="500" y1="140" x2="550" y2="140" stroke="#4a5568" stroke-width="2" />
+    <line x1="650" y1="180" x2="650" y2="250" stroke="#4a5568" stroke-width="2" />
+    <line x1="400" y1="330" x2="550" y2="290" stroke="#4a5568" stroke-width="2" />
+    <line x1="650" y1="330" x2="400" y2="400" stroke="#4a5568" stroke-width="2" />
+    
+    <!-- Arrowheads -->
+    <polygon points="300,135 310,140 300,145" fill="#4a5568" />
+    <polygon points="550,135 560,140 550,145" fill="#4a5568" />
+    <polygon points="650,250 645,260 655,260" fill="#4a5568" />
+    <polygon points="550,290 540,285 540,295" fill="#4a5568" />
+    <polygon points="400,400 410,395 410,405" fill="#4a5568" />
+</svg> 

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <!-- Gradients -->
+        <linearGradient id="exchangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#2ecc71;stop-opacity:0.1"/>
+            <stop offset="100%" style="stop-color:#2ecc71;stop-opacity:0.3"/>
+        </linearGradient>
+        
+        <linearGradient id="processingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#3498db;stop-opacity:0.1"/>
+            <stop offset="100%" style="stop-color:#3498db;stop-opacity:0.3"/>
+        </linearGradient>
+        
+        <linearGradient id="storageGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#9b59b6;stop-opacity:0.1"/>
+            <stop offset="100%" style="stop-color:#9b59b6;stop-opacity:0.3"/>
+        </linearGradient>
+        
+        <!-- Arrow Marker -->
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+                markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#666"/>
+        </marker>
+    </defs>
+
+    <!-- Title -->
+    <text x="400" y="40" font-family="Arial" font-size="24" text-anchor="middle" fill="#333">
+        Market Data Flow
+    </text>
+
+    <!-- Data Sources -->
+    <g transform="translate(50,100)">
+        <rect width="150" height="300" rx="10" fill="url(#exchangeGradient)" stroke="#2ecc71" stroke-width="2"/>
+        <text x="75" y="40" font-family="Arial" font-size="16" text-anchor="middle" fill="#2ecc71">Data Sources</text>
+        
+        <!-- Exchange Icons -->
+        <g transform="translate(25,70)">
+            <rect width="100" height="40" rx="5" fill="#fff" stroke="#2ecc71"/>
+            <text x="50" y="25" font-family="Arial" font-size="12" text-anchor="middle">Binance</text>
+        </g>
+        
+        <g transform="translate(25,130)">
+            <rect width="100" height="40" rx="5" fill="#fff" stroke="#2ecc71"/>
+            <text x="50" y="25" font-family="Arial" font-size="12" text-anchor="middle">Kraken</text>
+        </g>
+        
+        <g transform="translate(25,190)">
+            <rect width="100" height="40" rx="5" fill="#fff" stroke="#2ecc71"/>
+            <text x="50" y="25" font-family="Arial" font-size="12" text-anchor="middle">NASDAQ</text>
+        </g>
+    </g>
+
+    <!-- Processing Pipeline -->
+    <g transform="translate(300,100)">
+        <rect width="200" height="300" rx="10" fill="url(#processingGradient)" stroke="#3498db" stroke-width="2"/>
+        <text x="100" y="40" font-family="Arial" font-size="16" text-anchor="middle" fill="#3498db">Processing</text>
+        
+        <!-- Processing Steps -->
+        <g transform="translate(25,70)">
+            <rect width="150" height="40" rx="5" fill="#fff" stroke="#3498db"/>
+            <text x="75" y="25" font-family="Arial" font-size="12" text-anchor="middle">Normalization</text>
+        </g>
+        
+        <g transform="translate(25,130)">
+            <rect width="150" height="40" rx="5" fill="#fff" stroke="#3498db"/>
+            <text x="75" y="25" font-family="Arial" font-size="12" text-anchor="middle">Validation</text>
+        </g>
+        
+        <g transform="translate(25,190)">
+            <rect width="150" height="40" rx="5" fill="#fff" stroke="#3498db"/>
+            <text x="75" y="25" font-family="Arial" font-size="12" text-anchor="middle">Aggregation</text>
+        </g>
+    </g>
+
+    <!-- Consumers -->
+    <g transform="translate(600,100)">
+        <rect width="150" height="300" rx="10" fill="url(#storageGradient)" stroke="#9b59b6" stroke-width="2"/>
+        <text x="75" y="40" font-family="Arial" font-size="16" text-anchor="middle" fill="#9b59b6">Consumers</text>
+        
+        <!-- Consumer Types -->
+        <g transform="translate(25,70)">
+            <rect width="100" height="40" rx="5" fill="#fff" stroke="#9b59b6"/>
+            <text x="50" y="25" font-family="Arial" font-size="12" text-anchor="middle">Order Book</text>
+        </g>
+        
+        <g transform="translate(25,130)">
+            <rect width="100" height="40" rx="5" fill="#fff" stroke="#9b59b6"/>
+            <text x="50" y="25" font-family="Arial" font-size="12" text-anchor="middle">Strategy</text>
+        </g>
+        
+        <g transform="translate(25,190)">
+            <rect width="100" height="40" rx="5" fill="#fff" stroke="#9b59b6"/>
+            <text x="50" y="25" font-family="Arial" font-size="12" text-anchor="middle">Analytics</text>
+        </g>
+    </g>
+
+    <!-- Data Flow Arrows -->
+    <g stroke="#666" stroke-width="2" marker-end="url(#arrow)">
+        <!-- Source to Processing -->
+        <path d="M200,250 L300,250" fill="none"/>
+        
+        <!-- Processing to Consumers -->
+        <path d="M500,250 L600,250" fill="none"/>
+    </g>
+
+    <!-- Latency Indicators -->
+    <g transform="translate(220,200)">
+        <text font-family="Arial" font-size="10" fill="#666">~100μs</text>
+    </g>
+    
+    <g transform="translate(520,200)">
+        <text font-family="Arial" font-size="10" fill="#666">~50μs</text>
+    </g>
+
+    <!-- Legend -->
+    <g transform="translate(50,450)">
+        <rect width="15" height="15" fill="url(#exchangeGradient)" stroke="#2ecc71"/>
+        <text x="25" y="12" font-family="Arial" font-size="12">Market Data Sources</text>
+        
+        <g transform="translate(150,0)">
+            <rect width="15" height="15" fill="url(#processingGradient)" stroke="#3498db"/>
+            <text x="25" y="12" font-family="Arial" font-size="12">Data Processing</text>
+        </g>
+        
+        <g transform="translate(300,0)">
+            <rect width="15" height="15" fill="url(#storageGradient)" stroke="#9b59b6"/>
+            <text x="25" y="12" font-family="Arial" font-size="12">Data Consumers</text>
+        </g>
+    </g>
+</svg> 

@@ -1,2 +1,70 @@
+# Go build and dependency artifacts
+/bin/
+/build/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.a
+*.o
+*.obj
+*.coverprofile
+*.cover
+*.cov
+*.gcov
+*.gcda
+*.gcno
+*.prof
+*.profraw
+*.tmp
+*.log
+*.cache/
+
+# Go modules and vendor
+/go.sum
+/go.mod
+/vendor/
+
+# IDE/editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.bak
+*.tmp
+*~
 .DS_Store
 
+# OS generated files
+Thumbs.db
+Desktop.ini
+
+# Shell script artifacts
+*.sh~
+*.bash_history
+*.zsh_history
+
+# Coverage reports
+coverage.out
+*.lcov
+
+# Documentation builds
+/site/
+/docs/site/
+
+# Node/React frontend (if present)
+node_modules/
+build/
+dist/
+
+# Docker artifacts
+*.pid
+
+# Misc
+*.log
+*.pid
+*.lock
