@@ -120,17 +120,28 @@ function subscribeToBooksAndTrades() {
 
 // Handle incoming WebSocket messages
 function handleWebSocketMessage(message) {
+    console.log('Received WebSocket message:', message);
+    
+    if (!message || !message.channel) {
+        console.error('Invalid message format:', message);
+        return;
+    }
+    
     switch (message.channel) {
         case 'orderbook':
+            console.log('Updating orderbook with data:', message.data);
             updateOrderBook(message.data);
             break;
         case 'arbitrage':
+            console.log('Updating arbitrage with data:', message.data);
             updateArbitrageOpportunities(message.data);
             break;
         case 'strategy':
+            console.log('Updating strategy with data:', message.data);
             updateStrategyData(message.data);
             break;
         case 'system':
+            console.log('Received system message:', message);
             if (message.type === 'symbols') {
                 // Update symbols in the dropdown
                 updateSymbolDropdown(message.data);

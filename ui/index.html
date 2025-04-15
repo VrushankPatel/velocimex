@@ -36,6 +36,60 @@
             --color-volume-bid: rgba(52, 211, 153, 0.6);
             --color-volume-ask: rgba(248, 113, 113, 0.6);
         }
+        
+        /* Fix for dark mode text colors */
+        .dark-theme .text-gray-700,
+        .dark-theme .text-gray-800,
+        .dark-theme .text-gray-900,
+        .dark-theme h1,
+        .dark-theme h2,
+        .dark-theme h3,
+        .dark-theme h4,
+        .dark-theme p,
+        .dark-theme div,
+        .dark-theme span:not(.bg-green-500):not(.bg-red-500):not(.bg-yellow-500) {
+            color: var(--color-text-primary) !important;
+        }
+        
+        .dark-theme label.text-gray-700 {
+            color: var(--color-text-primary) !important;
+        }
+        
+        .dark-theme .bg-white,
+        .dark-theme [class*="bg-white"] {
+            background-color: var(--color-bg-secondary) !important;
+        }
+        
+        .dark-theme .bg-gray-100,
+        .dark-theme [class*="bg-gray-100"] {
+            background-color: var(--color-bg-primary) !important;
+        }
+        
+        .dark-theme .bg-gray-200,
+        .dark-theme [class*="bg-gray-200"] {
+            background-color: #374151 !important;
+        }
+        
+        .dark-theme #settings-modal .bg-white {
+            background-color: var(--color-bg-secondary) !important;
+        }
+        
+        .dark-theme .text-gray-500, 
+        .dark-theme .text-gray-600,
+        .dark-theme .animate-pulse .bg-gray-200 {
+            color: var(--color-text-secondary) !important;
+        }
+        
+        .dark-theme select,
+        .dark-theme input {
+            background-color: #374151 !important;
+            color: var(--color-text-primary) !important;
+            border-color: #4B5563 !important;
+        }
+        
+        .dark-theme option {
+            background-color: #1F2937 !important;
+        }
 
         body {
             background-color: var(--color-bg-primary);
@@ -269,7 +323,7 @@
             <form id="settings-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Display Depth</label>
-                    <select id="display-depth" class="w-full border rounded px-3 py-2">
+                    <select id="display-depth" class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:text-white">
                         <option value="5">5 Levels</option>
                         <option value="10" selected>10 Levels</option>
                         <option value="15">15 Levels</option>
@@ -278,7 +332,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Update Interval</label>
-                    <select id="update-interval" class="w-full border rounded px-3 py-2">
+                    <select id="update-interval" class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:text-white">
                         <option value="500">Fast (500ms)</option>
                         <option value="1000" selected>Normal (1000ms)</option>
                         <option value="2000">Slow (2000ms)</option>
@@ -286,7 +340,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Theme</label>
-                    <select id="theme-selector" class="w-full border rounded px-3 py-2">
+                    <select id="theme-selector" class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:text-white">
                         <option value="light" selected>Light</option>
                         <option value="dark">Dark</option>
                     </select>
