@@ -226,9 +226,3 @@ MARKET_DATA_MESSAGES = Counter(
    - Use binary protocols when available
    - Implement message batching
    - Optimize memory allocation
-
-## Next Steps
-
-- [Strategy Development](first_strategy.md)
-- [Order Management](order_management.md)
-- [Risk Management](risk_management.md) 

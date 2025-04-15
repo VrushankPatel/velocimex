@@ -220,9 +220,4 @@ http://localhost:8080
    
    # Clear browser cache and reload
    ```
-
-## Next Steps
-
-- [Configuration Guide](configuration.md)
-- [Quick Start Tutorial](quick_start.md)
-- [Market Connectivity](markets.md) 
+   
