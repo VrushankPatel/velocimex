@@ -36,7 +36,7 @@ function init() {
     
     // Set up event listeners
     settingsButton.addEventListener('click', openSettings);
-    closeSettings.addEventListener('click', closeSettings);
+    document.getElementById('close-settings').addEventListener('click', closeSettings);
     settingsForm.addEventListener('submit', saveSettings);
     orderbookSymbol.addEventListener('change', () => {
         currentSymbol = orderbookSymbol.value;
