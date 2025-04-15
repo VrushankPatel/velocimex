@@ -117,6 +117,35 @@ func (s *WebSocketServer) Close() {
         s.mu.Unlock()
 }
 
+// BroadcastSampleData sends sample data to all clients for testing
+func (s *WebSocketServer) BroadcastSampleData() {
+        // Sample order book data
+        orderBookData := `{"channel":"orderbook","data":{"symbol":"BTCUSDT","timestamp":"2025-04-14T16:34:42Z","bids":[{"price":70123.45,"volume":2.35},{"price":70120.11,"volume":1.89},{"price":70115.67,"volume":5.21},{"price":70110.22,"volume":3.76},{"price":70105.89,"volume":7.12},{"price":70100.45,"volume":6.54},{"price":70095.67,"volume":4.32},{"price":70090.22,"volume":8.91},{"price":70085.34,"volume":3.45},{"price":70080.19,"volume":5.67}],"asks":[{"price":70125.78,"volume":1.56},{"price":70130.44,"volume":2.78},{"price":70135.89,"volume":4.32},{"price":70140.56,"volume":3.21},{"price":70145.22,"volume":6.78},{"price":70150.67,"volume":5.43},{"price":70155.34,"volume":2.87},{"price":70160.89,"volume":4.56},{"price":70165.45,"volume":7.89},{"price":70170.23,"volume":5.43}]}}`
+        
+        // Sample arbitrage opportunities data
+        arbitrageData := `{"channel":"arbitrage","data":[{"symbol":"BTCUSDT","buyExchange":"Binance","sellExchange":"Coinbase","buyPrice":70110.22,"sellPrice":70125.78,"profitPercent":0.22,"estimatedProfit":15.56,"latencyEstimate":8,"isValid":true},{"symbol":"ETHUSDT","buyExchange":"Kraken","sellExchange":"Binance","buyPrice":3510.15,"sellPrice":3518.75,"profitPercent":0.25,"estimatedProfit":8.60,"latencyEstimate":12,"isValid":true}]}`
+        
+        // Sample symbols list
+        symbolsData := `{"channel":"system","type":"symbols","data":["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","ADAUSDT"]}`
+        
+        // Sample strategy performance data
+        strategyData := `{"channel":"strategy","data":{"profitLoss":1250.75,"drawdown":125.5,"recentSignals":[{"symbol":"BTCUSDT","side":"buy","price":70110.22,"volume":0.5,"exchange":"Binance","timestamp":1744648000000},{"symbol":"ETHUSDT","side":"sell","price":3518.75,"volume":2.5,"exchange":"Coinbase","timestamp":1744647900000}]}}`
+        
+        // Broadcast all sample data to clients
+        s.mu.Lock()
+        for client := range s.clients {
+                // Always send all data to all clients in demo mode
+                client.sendMessage([]byte(orderBookData))
+                client.sendMessage([]byte(arbitrageData))
+                client.sendMessage([]byte(symbolsData))
+                client.sendMessage([]byte(strategyData))
+        }
+        s.mu.Unlock()
+        
+        // Print a log message to indicate data was sent
+        log.Println("Broadcasted sample data to all clients")
+}
+
 // readPump processes incoming messages from the client
 func (c *Client) readPump() {
         defer func() {

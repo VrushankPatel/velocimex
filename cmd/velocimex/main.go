@@ -2,12 +2,12 @@ package main
 
 import (
         "flag"
-        "fmt"
         "log"
         "net/http"
         "os"
         "os/signal"
         "syscall"
+        "time"
 
         "velocimex/internal/api"
         "velocimex/internal/config"
@@ -55,30 +55,33 @@ func main() {
         // Start WebSocket server
         go wsServer.Run()
         
+        // Subscribe to orderbook manager and strategy engine updates and forward them to clients
+        go func() {
+            log.Println("Starting forwarding updates to WebSocket clients")
+            ticker := time.NewTicker(1 * time.Second)
+            defer ticker.Stop()
+            
+            for range ticker.C {
+                // Just simulate sending some data to clients for now (test only)
+                wsServer.BroadcastSampleData()
+            }
+        }()
+        
         // Serve static files for UI
         fs := http.FileServer(http.Dir("./ui"))
         router.Handle("/", fs)
 
-        // Start HTTP servers - one for the original port in config and one for port 5000 for Replit
-        go func() {
-                addr := fmt.Sprintf("0.0.0.0:%d", cfg.Server.Port)
-                log.Printf("Starting HTTP server at %s", addr)
-                if err := http.ListenAndServe(addr, router); err != nil {
-                        log.Printf("HTTP server error: %v", err)
-                }
-        }()
-        
-        // Start a second HTTP server on port 5000 for Replit
+        // Always use port 5000 for Replit
         go func() {
                 addr := "0.0.0.0:5000"
-                log.Printf("Starting HTTP server for Replit at %s", addr)
+                log.Printf("Starting HTTP server at %s", addr)
                 if err := http.ListenAndServe(addr, router); err != nil {
-                        log.Fatalf("HTTP server error on port 5000: %v", err)
+                        log.Fatalf("HTTP server error: %v", err)
                 }
         }()
         
-        // Print UI URLs
-        log.Printf("Web UI available at http://localhost:%d and http://localhost:5000", cfg.Server.Port)
+        // Print UI URL
+        log.Printf("Web UI available at http://localhost:5000")
         
         // Setup signal handling for graceful shutdown
         sigChan := make(chan os.Signal, 1)
