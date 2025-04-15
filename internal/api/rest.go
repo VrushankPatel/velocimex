@@ -240,10 +240,19 @@ func handleMarkets(w http.ResponseWriter, r *http.Request, bookManager *orderboo
 func handleSystemStatus(w http.ResponseWriter, r *http.Request) {
         switch r.Method {
         case http.MethodGet:
+                // Check if we're in simulation mode by examining if any feed is simulated
+                isSimulated := false
+                
+                // We should actually get this from our feed manager instance
+                // But for now, since we have no API keys set up, we'll assume simulation mode
+                isSimulated = true
+                
                 status := map[string]interface{}{
-                        "status":    "running",
-                        "version":   "1.0.0",
-                        "timestamp": fmt.Sprintf("%d", time.Now().Unix()),
+                        "status":      "running",
+                        "version":     "1.0.0",
+                        "timestamp":   fmt.Sprintf("%d", time.Now().Unix()),
+                        "isSimulated": isSimulated,
+                        "mode":        "simulation", // This will be "live" when using real APIs
                 }
 
                 writeJSON(w, status)

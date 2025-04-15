@@ -7,7 +7,7 @@ const wsClient = new WebSocketClient();
 const connectionStatus = document.getElementById('connection-status');
 const settingsButton = document.getElementById('settings-button');
 const settingsModal = document.getElementById('settings-modal');
-const closeSettings = document.getElementById('close-settings');
+const closeSettingsBtn = document.getElementById('close-settings');
 const settingsForm = document.getElementById('settings-form');
 const orderbookSymbol = document.getElementById('orderbook-symbol');
 const orderbookSpread = document.getElementById('orderbook-spread');
@@ -36,7 +36,7 @@ function init() {
     
     // Set up event listeners
     settingsButton.addEventListener('click', openSettings);
-    document.getElementById('close-settings').addEventListener('click', closeSettings);
+    closeSettingsBtn.addEventListener('click', closeSettings);
     settingsForm.addEventListener('submit', saveSettings);
     orderbookSymbol.addEventListener('change', () => {
         currentSymbol = orderbookSymbol.value;
@@ -57,10 +57,32 @@ function init() {
 function connectToWebSocket() {
     // Set up WebSocket connection and event handlers
     wsClient.onOpen(() => {
-        connectionStatus.innerHTML = `
-            <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-            <span>Connected</span>
-        `;
+        // Check if we're in simulation mode by fetching the system status
+        fetch('/api/v1/status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.isSimulated) {
+                    // Yellow icon for simulation mode
+                    connectionStatus.innerHTML = `
+                        <span class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
+                        <span title="Using simulated data as real market data is not available">Simulation</span>
+                    `;
+                } else {
+                    // Green icon for connected to real market
+                    connectionStatus.innerHTML = `
+                        <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                        <span>Connected</span>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching system status:', error);
+                // Default to Connected display if we can't fetch the status
+                connectionStatus.innerHTML = `
+                    <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                    <span>Connected</span>
+                `;
+            });
         
         // Subscribe to channels
         subscribeToBooksAndTrades();
