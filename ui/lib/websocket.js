@@ -27,13 +27,20 @@ class WebSocketClient {
       return;
     }
     
-    // Determine WebSocket URL
+    // Determine WebSocket URL - always use the same host/port as the current page
+    // This solves the issue with two servers running on different ports
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     
     console.log(`Connecting to WebSocket at ${wsUrl}`);
     
-    this.socket = new WebSocket(wsUrl);
+    try {
+      this.socket = new WebSocket(wsUrl);
+    } catch (error) {
+      console.error('Error creating WebSocket connection:', error);
+      this.tryReconnect();
+      return;
+    }
     
     this.socket.onopen = (event) => {
       console.log('WebSocket connected');
@@ -66,16 +73,40 @@ class WebSocketClient {
     };
     
     this.socket.onmessage = (event) => {
-      let message;
-      try {
-        message = JSON.parse(event.data);
-      } catch (error) {
-        console.error('Error parsing WebSocket message', error);
-        return;
-      }
+      // Try to parse multiple JSON messages if they were received together
+      const messages = event.data.split('\n').filter(msg => msg.trim() !== '');
       
-      // Call onMessage callbacks
-      this.onMessageCallbacks.forEach(callback => callback(message));
+      for (const msgStr of messages) {
+        let message;
+        try {
+          // First, try to parse as regular JSON
+          message = JSON.parse(msgStr);
+          console.log('Received WebSocket message:', message);
+          
+          // Call onMessage callbacks with the successfully parsed message
+          this.onMessageCallbacks.forEach(callback => callback(message));
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+          console.log('Problematic message:', msgStr);
+          
+          // Try to salvage the message if it's malformed but still valid JSON with some cleanup
+          try {
+            const cleanedMsg = msgStr.trim()
+              .replace(/,\s*}/, '}')  // Remove trailing commas before closing braces
+              .replace(/,\s*]/, ']')  // Remove trailing commas before closing brackets
+              .replace(/\n/g, '\\n'); // Escape newlines
+              
+            message = JSON.parse(cleanedMsg);
+            console.log('Salvaged WebSocket message after cleanup:', message);
+            
+            // Call onMessage callbacks with the salvaged message
+            this.onMessageCallbacks.forEach(callback => callback(message));
+          } catch (secondError) {
+            // If we still can't parse it, log and ignore this message
+            console.error('Failed to salvage malformed message:', secondError);
+          }
+        }
+      }
     };
   }
   

@@ -41,6 +41,71 @@ feeds:
     symbols:
       - XBT/USD
       - ETH/USD
+      
+  # Stock market feeds
+  - name: NASDAQ
+    type: stock
+    url: https://api.nasdaq.com
+    apiKey: ""
+    apiSecret: ""
+    symbols:
+      - AAPL
+      - MSFT
+      - GOOGL
+      - AMZN
+      - TSLA
+      
+  - name: NYSE
+    type: stock
+    url: https://api.nyse.com
+    apiKey: ""
+    apiSecret: ""
+    symbols:
+      - JPM
+      - BAC
+      - WMT
+      - DIS
+      - XOM
+      
+  - name: NSE
+    type: stock
+    url: https://api.nseindia.com
+    apiKey: ""
+    apiSecret: ""
+    symbols:
+      - RELIANCE
+      - TCS
+      - INFY
+      - HDFCBANK
+      - HINDUNILVR
+      
+  - name: BSE
+    type: stock
+    url: https://api.bseindia.com
+    apiKey: ""
+    apiSecret: ""
+    symbols:
+      - TATASTEEL.BSE
+      - BAJFINANCE.BSE
+      - ICICIBANK.BSE
+      - SBIN.BSE
+      - AXISBANK.BSE
+      
+  - name: S&P500
+    type: stock
+    url: https://api.sp500.com
+    apiKey: ""
+    apiSecret: ""
+    symbols:
+      - SPY
+      
+  - name: DowJones
+    type: stock
+    url: https://api.dowjones.com
+    apiKey: ""
+    apiSecret: ""
+    symbols:
+      - DIA
 
 strategies:
   arbitrage:

@@ -490,6 +490,24 @@ function applySettings() {
     // Apply theme
     if (settings.theme === 'dark') {
         document.body.classList.add('dark-theme');
+        
+        // Add border styling to panels for better visual separation in dark mode
+        const panels = document.querySelectorAll('.rounded-lg.shadow-md');
+        panels.forEach(panel => {
+            panel.style.border = '1px solid rgba(255, 255, 255, 0.075)';
+            panel.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05)';
+            panel.style.backgroundColor = '#1F2937';
+        });
+        
+        // Improve header styling
+        const headers = document.querySelectorAll('.rounded-lg.shadow-md h2');
+        headers.forEach(header => {
+            header.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
+            header.style.paddingBottom = '0.75rem';
+            header.style.marginBottom = '1rem';
+            header.style.color = '#E5E7EB';
+        });
+        
         // Update chart colors for dark theme
         if (chartInstance) {
             chartInstance.options.scales.x.grid.color = 'rgba(255, 255, 255, 0.1)';
@@ -498,10 +516,29 @@ function applySettings() {
             chartInstance.options.scales.y.ticks.color = '#9ca3af';
             chartInstance.update();
         }
+        
         // Update status and styling
         console.log('Dark theme applied');
     } else {
         document.body.classList.remove('dark-theme');
+        
+        // Reset panel styling
+        const panels = document.querySelectorAll('.rounded-lg.shadow-md');
+        panels.forEach(panel => {
+            panel.style.border = '';
+            panel.style.boxShadow = '';
+            panel.style.backgroundColor = '';
+        });
+        
+        // Reset header styling
+        const headers = document.querySelectorAll('.rounded-lg.shadow-md h2');
+        headers.forEach(header => {
+            header.style.borderBottom = '';
+            header.style.paddingBottom = '';
+            header.style.marginBottom = '';
+            header.style.color = '';
+        });
+        
         // Update chart colors for light theme
         if (chartInstance) {
             chartInstance.options.scales.x.grid.color = 'rgba(0, 0, 0, 0.1)';
@@ -510,6 +547,7 @@ function applySettings() {
             chartInstance.options.scales.y.ticks.color = '#6b7280';
             chartInstance.update();
         }
+        
         // Update status and styling
         console.log('Light theme applied');
     }

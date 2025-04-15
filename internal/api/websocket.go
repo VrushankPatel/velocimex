@@ -192,20 +192,9 @@ func (c *Client) writePump() {
                                 return
                         }
 
-                        w, err := c.conn.NextWriter(websocket.TextMessage)
-                        if err != nil {
-                                return
-                        }
-                        w.Write(message)
-
-                        // Add queued messages to the current websocket message
-                        n := len(c.send)
-                        for i := 0; i < n; i++ {
-                                w.Write([]byte{'\n'})
-                                w.Write(<-c.send)
-                        }
-
-                        if err := w.Close(); err != nil {
+                        // Send each message individually to avoid JSON parsing errors
+                        if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+                                log.Printf("Error writing message: %v", err)
                                 return
                         }
 

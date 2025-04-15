@@ -55,9 +55,12 @@
             color: var(--color-text-primary) !important;
         }
         
+        /* Enhanced dark mode styling */
         .dark-theme .bg-white,
         .dark-theme [class*="bg-white"] {
             background-color: var(--color-bg-secondary) !important;
+            border: 1px solid rgba(255, 255, 255, 0.05) !important;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2) !important;
         }
         
         .dark-theme .bg-gray-100,
@@ -70,8 +73,32 @@
             background-color: #374151 !important;
         }
         
+        /* Make panels stand out in dark mode */
+        .dark-theme .rounded-lg.shadow-md {
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25), 
+                       inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+            border-radius: 0.5rem !important;
+            border: 1px solid rgba(255, 255, 255, 0.075) !important;
+            overflow: hidden;
+        }
+        
+        .dark-theme .rounded-lg.shadow-md h2 {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            color: #E5E7EB !important;
+        }
+        
+        /* Improved dark mode title bar */
+        .dark-theme header.bg-indigo-600 {
+            background: linear-gradient(90deg, #4F46E5, #6366F1) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
         .dark-theme #settings-modal .bg-white {
-            background-color: var(--color-bg-secondary) !important;
+            background-color: #1F2937 !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
         }
         
         .dark-theme .text-gray-500, 
@@ -89,6 +116,29 @@
         
         .dark-theme option {
             background-color: #1F2937 !important;
+        }
+        
+        /* Improved tables and orderbook styling */
+        .dark-theme .orderbook-header {
+            color: #9CA3AF !important;
+            font-weight: 600;
+            background-color: rgba(17, 24, 39, 0.5) !important;
+            padding: 0.5rem 0.25rem !important;
+            border-radius: 0.25rem;
+        }
+        
+        .dark-theme .orderbook-row {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            padding: 0.25rem 0;
+        }
+        
+        /* Nice volume bars in dark mode */
+        .dark-theme .volume-bar-bid {
+            background-color: rgba(16, 185, 129, 0.25) !important;
+        }
+        
+        .dark-theme .volume-bar-ask {
+            background-color: rgba(239, 68, 68, 0.25) !important;
         }
 
         body {
@@ -232,6 +282,20 @@
                         <select id="orderbook-symbol" class="border rounded px-2 py-1 text-sm">
                             <option value="BTCUSDT">BTC/USDT</option>
                             <option value="ETHUSDT">ETH/USDT</option>
+                            <option value="SOLUSDT">SOL/USDT</option>
+                            <option value="BNBUSDT">BNB/USDT</option>
+                            <option value="ADAUSDT">ADA/USDT</option>
+                            <option value="AAPL">AAPL (NASDAQ)</option>
+                            <option value="MSFT">MSFT (NASDAQ)</option>
+                            <option value="GOOGL">GOOGL (NASDAQ)</option>
+                            <option value="TSLA">TSLA (NASDAQ)</option>
+                            <option value="AMZN">AMZN (NASDAQ)</option>
+                            <option value="JPM">JPM (NYSE)</option>
+                            <option value="BAC">BAC (NYSE)</option>
+                            <option value="RELIANCE">RELIANCE (NSE)</option>
+                            <option value="TCS">TCS (NSE)</option>
+                            <option value="SPY">SPY (S&P500)</option>
+                            <option value="DIA">DIA (Dow Jones)</option>
                         </select>
                     </div>
                     <div class="text-center mb-2">
