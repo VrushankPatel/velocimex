@@ -1,8 +1,11 @@
-# ![Velocimex Logo](assets/velocimex-logo.svg)
+<p align="center">
+  <img src="assets/velocimex-logo.svg" alt="Velocimex Logo"/>
+</p>
 
 A high-performance, low-latency High-Frequency Trading (HFT) ecosystem built in Go with a modern React/ShadCN UI.
 
 [![Go](https://img.shields.io/badge/Go-1.23.8-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
+[![Go](https://github.com/VrushankPatel/velocimex/actions/workflows/go.yml/badge.svg)](https://github.com/VrushankPatel/velocimex/actions/workflows/go.yml)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![Documentation](https://img.shields.io/badge/Docs-MkDocs-blue)](https://velocimex.readthedocs.io/)
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
@@ -101,11 +104,11 @@ Velocimex is built with a modular, event-driven architecture optimized for high 
 
 Comprehensive documentation is available at [velocimex.readthedocs.io](https://velocimex.readthedocs.io/), including:
 
-- [Installation Guide](https://velocimex.readthedocs.io/en/latest/technical/installation/)
-- [Configuration Guide](https://velocimex.readthedocs.io/en/latest/technical/configuration/)
-- [Quick Start](https://velocimex.readthedocs.io/en/latest/technical/quick_start/)
-- [Market Connectivity](https://velocimex.readthedocs.io/en/latest/technical/markets/)
-- [Strategy Development](https://velocimex.readthedocs.io/en/latest/technical/first_strategy/)
+- [Installation Guide](https://velocimex.readthedocs.io/en/latest/technical/installation.html)
+- [Configuration Guide](https://velocimex.readthedocs.io/en/latest/technical/configuration.html)
+- [Quick Start](https://velocimex.readthedocs.io/en/latest/#technical/quick_start.md)
+- [Market Connectivity](https://velocimex.readthedocs.io/en/latest/technical/markets.html)
+- [Strategy Development](https://velocimex.readthedocs.io/en/latest/technical/first_strategy.html)
 
 ## Contributing
 
