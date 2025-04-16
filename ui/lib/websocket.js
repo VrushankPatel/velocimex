@@ -10,6 +10,8 @@ class WebSocketClient {
     this.maxReconnectAttempts = 5;
     this.reconnectInterval = 3000; // 3 seconds
     this.subscriptions = {};
+    this.messageQueue = [];
+    this.isProcessingQueue = false;
     
     // Callbacks
     this.onOpenCallbacks = [];
@@ -46,6 +48,7 @@ class WebSocketClient {
       console.log('WebSocket connected');
       this.isConnected = true;
       this.reconnectAttempts = 0;
+      this.messageQueue = []; // Clear message queue on reconnect
       
       // Resubscribe to all channels
       this.resubscribe();
@@ -61,8 +64,10 @@ class WebSocketClient {
       // Call onClose callbacks
       this.onCloseCallbacks.forEach(callback => callback(event));
       
-      // Try to reconnect
-      this.tryReconnect();
+      // Only try to reconnect if it wasn't a clean close
+      if (!event.wasClean) {
+        this.tryReconnect();
+      }
     };
     
     this.socket.onerror = (error) => {
@@ -73,41 +78,38 @@ class WebSocketClient {
     };
     
     this.socket.onmessage = (event) => {
-      // Try to parse multiple JSON messages if they were received together
-      const messages = event.data.split('\n').filter(msg => msg.trim() !== '');
+      if (this.isProcessingQueue) {
+        this.messageQueue.push(event.data);
+        return;
+      }
+      
+      this.processMessage(event.data);
+    };
+  }
+  
+  processMessage(data) {
+    this.isProcessingQueue = true;
+    
+    try {
+      const messages = data.split('\n').filter(msg => msg.trim() !== '');
       
       for (const msgStr of messages) {
-        let message;
         try {
-          // First, try to parse as regular JSON
-          message = JSON.parse(msgStr);
-          console.log('Received WebSocket message:', message);
-          
-          // Call onMessage callbacks with the successfully parsed message
+          const message = JSON.parse(msgStr);
           this.onMessageCallbacks.forEach(callback => callback(message));
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
-          console.log('Problematic message:', msgStr);
-          
-          // Try to salvage the message if it's malformed but still valid JSON with some cleanup
-          try {
-            const cleanedMsg = msgStr.trim()
-              .replace(/,\s*}/, '}')  // Remove trailing commas before closing braces
-              .replace(/,\s*]/, ']')  // Remove trailing commas before closing brackets
-              .replace(/\n/g, '\\n'); // Escape newlines
-              
-            message = JSON.parse(cleanedMsg);
-            console.log('Salvaged WebSocket message after cleanup:', message);
-            
-            // Call onMessage callbacks with the salvaged message
-            this.onMessageCallbacks.forEach(callback => callback(message));
-          } catch (secondError) {
-            // If we still can't parse it, log and ignore this message
-            console.error('Failed to salvage malformed message:', secondError);
-          }
         }
       }
-    };
+    } finally {
+      this.isProcessingQueue = false;
+      
+      // Process any messages that came in while we were processing
+      if (this.messageQueue.length > 0) {
+        const nextMessage = this.messageQueue.shift();
+        setTimeout(() => this.processMessage(nextMessage), 0);
+      }
+    }
   }
   
   /**

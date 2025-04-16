@@ -28,9 +28,19 @@ let settings = {
 let chartInstance = null;
 let currentSymbol = 'BTCUSDT';
 let lastOrderbookData = null;
+let lastOrderbookUpdate = 0;
+let isUpdatingOrderbook = false;
+let lastMarketData = null;
+let isDropdownOpen = false;
+let updateTimeout = null;
 
 // Initialize the application
 function init() {
+    console.log('Initializing application...');
+    
+    // Show loading states
+    showLoadingStates();
+    
     // Load settings from local storage
     loadSettings();
     
@@ -38,9 +48,32 @@ function init() {
     settingsButton.addEventListener('click', openSettings);
     closeSettingsBtn.addEventListener('click', closeSettings);
     settingsForm.addEventListener('submit', saveSettings);
+    
+    // Handle dropdown events
+    orderbookSymbol.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        isDropdownOpen = true;
+    });
+    
+    document.addEventListener('mousedown', (e) => {
+        if (!orderbookSymbol.contains(e.target)) {
+            isDropdownOpen = false;
+        }
+    });
+    
     orderbookSymbol.addEventListener('change', () => {
-        currentSymbol = orderbookSymbol.value;
-        subscribeToBooksAndTrades();
+        if (isDropdownOpen) {
+            const previousSymbol = currentSymbol;
+            currentSymbol = orderbookSymbol.value;
+            console.log(`Changing symbol from ${previousSymbol} to ${currentSymbol}`);
+            
+            // Show loading state for orderbook
+            showOrderbookLoading();
+            
+            // Unsubscribe from previous symbol and subscribe to new one
+            subscribeToBooksAndTrades();
+            isDropdownOpen = false;
+        }
     });
     
     // Connect to the WebSocket server
@@ -48,60 +81,95 @@ function init() {
     
     // Initialize the chart
     initializeChart();
+}
+
+// Show loading states for all panels
+function showLoadingStates() {
+    // Market Overview loading state
+    marketList.innerHTML = `
+        <div class="animate-pulse space-y-4">
+            <div class="h-6 bg-gray-700 rounded w-3/4"></div>
+            <div class="h-6 bg-gray-700 rounded w-2/3"></div>
+            <div class="h-6 bg-gray-700 rounded w-3/4"></div>
+        </div>
+    `;
     
-    // Start the UI update loop
-    setInterval(updateUI, settings.updateInterval);
+    // Orderbook loading state
+    showOrderbookLoading();
+    
+    // Arbitrage loading state
+    arbitrageList.innerHTML = `
+        <div class="animate-pulse space-y-4">
+            <div class="h-20 bg-gray-700 rounded w-full"></div>
+            <div class="h-20 bg-gray-700 rounded w-full"></div>
+        </div>
+    `;
+    
+    // Signals loading state
+    signalsList.innerHTML = `
+        <div class="animate-pulse space-y-4">
+            <div class="h-16 bg-gray-700 rounded w-full"></div>
+            <div class="h-16 bg-gray-700 rounded w-full"></div>
+        </div>
+    `;
+}
+
+// Show loading state for orderbook
+function showOrderbookLoading() {
+    const loadingRow = `
+        <div class="orderbook-row">
+            <div class="animate-pulse bg-gray-700 h-4 rounded w-20"></div>
+            <div class="animate-pulse bg-gray-700 h-4 rounded w-16"></div>
+            <div class="animate-pulse bg-gray-700 h-4 rounded w-24"></div>
+        </div>
+    `.repeat(settings.displayDepth);
+    
+    asksContainer.innerHTML = loadingRow;
+    bidsContainer.innerHTML = loadingRow;
+    orderbookSpread.innerHTML = `<span class="animate-pulse bg-gray-700 h-4 rounded w-32 inline-block"></span>`;
 }
 
 // Connect to WebSocket server
 function connectToWebSocket() {
+    console.log('Connecting to WebSocket server...');
+    
     // Set up WebSocket connection and event handlers
     wsClient.onOpen(() => {
-        // Check if we're in simulation mode by fetching the system status
-        fetch('/api/v1/status')
-            .then(response => response.json())
-            .then(data => {
-                if (data.isSimulated) {
-                    // Yellow icon for simulation mode
-                    connectionStatus.innerHTML = `
-                        <span class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
-                        <span title="Using simulated data as real market data is not available">Simulation</span>
-                    `;
-                } else {
-                    // Green icon for connected to real market
-                    connectionStatus.innerHTML = `
-                        <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-                        <span>Connected</span>
-                    `;
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching system status:', error);
-                // Default to Connected display if we can't fetch the status
-                connectionStatus.innerHTML = `
-                    <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-                    <span>Connected</span>
-                `;
-            });
+        console.log('WebSocket connected successfully');
+        connectionStatus.innerHTML = `
+            <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+            <span>Connected</span>
+        `;
         
         // Subscribe to channels
         subscribeToBooksAndTrades();
         wsClient.subscribe('arbitrage');
         wsClient.subscribe('strategy');
+        wsClient.subscribe('markets');
+        
+        // Initial data fetch
+        updateUI();
     });
     
     wsClient.onClose(() => {
+        console.log('WebSocket disconnected');
         connectionStatus.innerHTML = `
             <span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
             <span>Disconnected</span>
         `;
+        showLoadingStates();
     });
     
     wsClient.onError((error) => {
         console.error('WebSocket error:', error);
+        connectionStatus.innerHTML = `
+            <span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+            <span>Error</span>
+        `;
     });
     
     wsClient.onMessage((message) => {
+        console.log('Received message:', message);
         handleWebSocketMessage(message);
     });
     
@@ -111,6 +179,8 @@ function connectToWebSocket() {
 
 // Subscribe to order books and trade feeds
 function subscribeToBooksAndTrades() {
+    console.log(`Subscribing to orderbook for ${currentSymbol}`);
+    
     // First unsubscribe from any previous symbol
     wsClient.unsubscribe('orderbook', currentSymbol);
     
@@ -120,94 +190,127 @@ function subscribeToBooksAndTrades() {
 
 // Handle incoming WebSocket messages
 function handleWebSocketMessage(message) {
-    console.log('Received WebSocket message:', message);
-    
     if (!message || !message.channel) {
         console.error('Invalid message format:', message);
         return;
     }
     
-    switch (message.channel) {
-        case 'orderbook':
-            console.log('Updating orderbook with data:', message.data);
-            updateOrderBook(message.data);
-            break;
-        case 'arbitrage':
-            console.log('Updating arbitrage with data:', message.data);
-            updateArbitrageOpportunities(message.data);
-            break;
-        case 'strategy':
-            console.log('Updating strategy with data:', message.data);
-            updateStrategyData(message.data);
-            break;
-        case 'system':
-            console.log('Received system message:', message);
-            if (message.type === 'symbols') {
-                // Update symbols in the dropdown
-                updateSymbolDropdown(message.data);
-            }
-            break;
-        default:
-            console.log('Unhandled message type:', message.type, 'on channel:', message.channel);
+    // Clear any pending updates
+    if (updateTimeout) {
+        clearTimeout(updateTimeout);
     }
+    
+    // Schedule the update to run after a short delay
+    updateTimeout = setTimeout(() => {
+        console.log('Processing message:', message);
+        
+        if (message.channel === 'orderbook' && !isDropdownOpen) {
+            if (!message.data) {
+                console.error('Invalid orderbook data:', message);
+                return;
+            }
+            updateOrderBook(message.data);
+        } else if (message.channel === 'arbitrage') {
+            if (!message.data) {
+                console.error('Invalid arbitrage data:', message);
+                return;
+            }
+            updateArbitrageOpportunities(message.data);
+        } else if (message.channel === 'strategy') {
+            if (!message.data) {
+                console.error('Invalid strategy data:', message);
+                return;
+            }
+            updateStrategyData(message.data);
+        } else if (message.channel === 'markets') {
+            if (!message.data) {
+                console.error('Invalid market data:', message);
+                return;
+            }
+            updateMarketList(message.data);
+        } else if (message.channel === 'system' && message.type === 'symbols') {
+            if (!message.data) {
+                console.error('Invalid symbols data:', message);
+                return;
+            }
+            updateSymbolDropdown(message.data);
+        }
+    }, 50); // 50ms delay to batch updates
 }
 
 // Update the order book display
 function updateOrderBook(data) {
-    if (!data || !data.bids || !data.asks) return;
+    if (!data || !data.bids || !data.asks || isDropdownOpen) return;
     
+    // Debounce updates - only update if enough time has passed
+    const now = Date.now();
+    if (now - lastOrderbookUpdate < 100) { // 100ms debounce
+        return;
+    }
+    
+    // Check if data has actually changed
+    if (lastOrderbookData && 
+        JSON.stringify(data.bids.slice(0, settings.displayDepth)) === JSON.stringify(lastOrderbookData.bids.slice(0, settings.displayDepth)) &&
+        JSON.stringify(data.asks.slice(0, settings.displayDepth)) === JSON.stringify(lastOrderbookData.asks.slice(0, settings.displayDepth))) {
+        return;
+    }
+    
+    lastOrderbookUpdate = now;
     lastOrderbookData = data;
     
-    // Calculate max volume for volume bar scaling
-    const maxBidVolume = Math.max(...data.bids.map(bid => bid.volume));
-    const maxAskVolume = Math.max(...data.asks.map(ask => ask.volume));
-    
-    // Update asks (reversed to show highest at top)
-    const asksHTML = data.asks
-        .slice(0, settings.displayDepth)
-        .reverse()
-        .map(ask => {
-            const volumePercentage = (ask.volume / maxAskVolume * 100).toFixed(0);
-            return `
-                <div class="orderbook-row relative">
-                    <div class="ask">${formatPrice(ask.price)}</div>
-                    <div>${formatVolume(ask.volume)}</div>
-                    <div>${formatVolume(ask.price * ask.volume)}</div>
-                    <div class="volume-bar volume-bar-ask" style="width: ${volumePercentage}%"></div>
-                </div>
-            `;
-        })
-        .join('');
-    
-    // Update bids
-    const bidsHTML = data.bids
-        .slice(0, settings.displayDepth)
-        .map(bid => {
-            const volumePercentage = (bid.volume / maxBidVolume * 100).toFixed(0);
-            return `
-                <div class="orderbook-row relative">
-                    <div class="bid">${formatPrice(bid.price)}</div>
-                    <div>${formatVolume(bid.volume)}</div>
-                    <div>${formatVolume(bid.price * bid.volume)}</div>
-                    <div class="volume-bar volume-bar-bid" style="width: ${volumePercentage}%"></div>
-                </div>
-            `;
-        })
-        .join('');
-    
-    // Update the containers
-    asksContainer.innerHTML = asksHTML;
-    bidsContainer.innerHTML = bidsHTML;
-    
-    // Update spread
-    if (data.asks.length > 0 && data.bids.length > 0) {
-        const bestAsk = data.asks[0].price;
-        const bestBid = data.bids[0].price;
-        const spread = bestAsk - bestBid;
-        const spreadPercentage = (spread / bestAsk * 100).toFixed(2);
+    // Use requestAnimationFrame for smooth updates
+    requestAnimationFrame(() => {
+        // Calculate max volume for volume bar scaling
+        const maxBidVolume = Math.max(...data.bids.map(bid => bid.volume));
+        const maxAskVolume = Math.max(...data.asks.map(ask => ask.volume));
         
-        orderbookSpread.textContent = `Spread: ${formatPrice(spread)} (${spreadPercentage}%)`;
-    }
+        // Update asks (reversed to show highest at top)
+        const asksHTML = data.asks
+            .slice(0, settings.displayDepth)
+            .reverse()
+            .map(ask => {
+                const volumePercentage = (ask.volume / maxAskVolume * 100).toFixed(0);
+                return `
+                    <div class="orderbook-row relative">
+                        <div class="ask">${formatPrice(ask.price)}</div>
+                        <div>${formatVolume(ask.volume)}</div>
+                        <div>${formatVolume(ask.price * ask.volume)}</div>
+                        <div class="volume-bar volume-bar-ask" style="width: ${volumePercentage}%"></div>
+                    </div>
+                `;
+            })
+            .join('');
+        
+        // Update bids
+        const bidsHTML = data.bids
+            .slice(0, settings.displayDepth)
+            .map(bid => {
+                const volumePercentage = (bid.volume / maxBidVolume * 100).toFixed(0);
+                return `
+                    <div class="orderbook-row relative">
+                        <div class="bid">${formatPrice(bid.price)}</div>
+                        <div>${formatVolume(bid.volume)}</div>
+                        <div>${formatVolume(bid.price * bid.volume)}</div>
+                        <div class="volume-bar volume-bar-bid" style="width: ${volumePercentage}%"></div>
+                    </div>
+                `;
+            })
+            .join('');
+        
+        // Update the containers
+        asksContainer.innerHTML = asksHTML;
+        bidsContainer.innerHTML = bidsHTML;
+        
+        // Update spread
+        if (data.asks.length > 0 && data.bids.length > 0) {
+            const bestAsk = data.asks[0].price;
+            const bestBid = data.bids[0].price;
+            const spread = bestAsk - bestBid;
+            const spreadPercentage = (spread / bestAsk * 100).toFixed(2);
+            
+            orderbookSpread.textContent = `Spread: ${formatPrice(spread)} (${spreadPercentage}%)`;
+        }
+    });
 }
 
 // Update arbitrage opportunities display
@@ -411,27 +514,67 @@ function updateSymbolDropdown(symbols) {
 
 // Update the market list
 function updateUI() {
+    // Show loading state
+    marketList.innerHTML = `
+        <div class="animate-pulse">
+            <div class="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+            <div class="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+            <div class="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+        </div>
+    `;
+    
     // Fetch latest market data via REST API
     fetch('/api/v1/markets')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data && data.markets) {
+                lastMarketData = data.markets;
                 updateMarketList(data.markets);
+            } else {
+                throw new Error('Invalid market data format');
             }
         })
-        .catch(error => console.error('Error fetching market data:', error));
+        .catch(error => {
+            console.error('Error fetching market data:', error);
+            marketList.innerHTML = `
+                <div class="text-red-500 text-center py-4">
+                    Error loading market data. Please try again later.
+                </div>
+            `;
+        });
 }
 
 // Update the market list display
 function updateMarketList(markets) {
-    if (!markets || !markets.length) return;
+    if (!markets || !markets.length) {
+        marketList.innerHTML = `
+            <div class="text-gray-500 text-center py-4">
+                No market data available
+            </div>
+        `;
+        return;
+    }
     
     const html = markets
         .map(market => {
+            const priceChange = market.priceChange || 0;
+            const priceChangeClass = priceChange > 0 ? 'text-green-600' : priceChange < 0 ? 'text-red-600' : 'text-gray-600';
+            
             return `
                 <div class="flex justify-between items-center py-2 border-b">
-                    <span class="font-medium">${market.symbol}</span>
-                    <span>${formatPrice(market.price)}</span>
+                    <div>
+                        <span class="font-medium">${market.symbol}</span>
+                        <span class="text-sm text-gray-500 ml-2">${market.exchange || ''}</span>
+                    </div>
+                    <div class="text-right">
+                        <div class="${priceChangeClass}">${formatPrice(market.price)}</div>
+                        <div class="text-xs ${priceChangeClass}">${priceChange > 0 ? '+' : ''}${priceChange.toFixed(2)}%</div>
+                    </div>
                 </div>
             `;
         })

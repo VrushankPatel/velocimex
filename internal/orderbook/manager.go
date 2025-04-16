@@ -6,14 +6,16 @@ import (
 
 // Manager manages multiple order books
 type Manager struct {
-	books map[string]*OrderBook
-	mu    sync.RWMutex
+	books       map[string]*OrderBook
+	subscribers []chan<- Update
+	mu          sync.RWMutex
 }
 
 // NewManager creates a new order book manager
 func NewManager() *Manager {
 	return &Manager{
-		books: make(map[string]*OrderBook),
+		books:       make(map[string]*OrderBook),
+		subscribers: make([]chan<- Update, 0),
 	}
 }
 
@@ -22,20 +24,20 @@ func (m *Manager) GetOrderBook(symbol string) *OrderBook {
 	m.mu.RLock()
 	book, ok := m.books[symbol]
 	m.mu.RUnlock()
-	
+
 	if ok {
 		return book
 	}
-	
+
 	// Create a new order book if it doesn't exist
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	// Double-check in case another goroutine created it
 	if book, ok := m.books[symbol]; ok {
 		return book
 	}
-	
+
 	book = NewOrderBook(symbol)
 	m.books[symbol] = book
 	return book
@@ -45,12 +47,12 @@ func (m *Manager) GetOrderBook(symbol string) *OrderBook {
 func (m *Manager) GetSymbols() []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	symbols := make([]string, 0, len(m.books))
 	for symbol := range m.books {
 		symbols = append(symbols, symbol)
 	}
-	
+
 	return symbols
 }
 
@@ -58,12 +60,19 @@ func (m *Manager) GetSymbols() []string {
 func (m *Manager) GetAllOrderBooks() map[string]*OrderBook {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	// Create a copy of the map
 	books := make(map[string]*OrderBook, len(m.books))
 	for symbol, book := range m.books {
 		books[symbol] = book
 	}
-	
+
 	return books
+}
+
+// Subscribe subscribes to order book updates
+func (m *Manager) Subscribe(ch chan<- Update) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.subscribers = append(m.subscribers, ch)
 }

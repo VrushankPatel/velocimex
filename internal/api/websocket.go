@@ -1,220 +1,272 @@
 package api
 
 import (
-        "log"
-        "net/http"
-        "sync"
-        "time"
+	"encoding/json"
+	"log"
+	"net/http"
+	"sync"
+	"time"
 
-        "github.com/gorilla/websocket"
-        "velocimex/internal/orderbook"
-        "velocimex/internal/strategy"
+	"velocimex/internal/orderbook"
+	"velocimex/internal/strategy"
+
+	"github.com/gorilla/websocket"
 )
+
+// Update types
+type OrderBookUpdate struct {
+	Symbol    string                 `json:"symbol"`
+	Timestamp time.Time              `json:"timestamp"`
+	Bids      []orderbook.PriceLevel `json:"bids"`
+	Asks      []orderbook.PriceLevel `json:"asks"`
+}
+
+type StrategyUpdate struct {
+	ProfitLoss    float64          `json:"profitLoss"`
+	Drawdown      float64          `json:"drawdown"`
+	RecentSignals []StrategySignal `json:"recentSignals"`
+}
+
+type StrategySignal struct {
+	Symbol    string    `json:"symbol"`
+	Side      string    `json:"side"`
+	Price     float64   `json:"price"`
+	Volume    float64   `json:"volume"`
+	Exchange  string    `json:"exchange"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+type MarketData struct {
+	Symbol      string  `json:"symbol"`
+	Price       float64 `json:"price"`
+	PriceChange float64 `json:"priceChange"`
+	Exchange    string  `json:"exchange"`
+}
+
+// ArbitrageOpportunity represents an arbitrage opportunity between exchanges
+type ArbitrageOpportunity struct {
+	Symbol          string  `json:"symbol"`
+	BuyExchange     string  `json:"buyExchange"`
+	SellExchange    string  `json:"sellExchange"`
+	BuyPrice        float64 `json:"buyPrice"`
+	SellPrice       float64 `json:"sellPrice"`
+	ProfitPercent   float64 `json:"profitPercent"`
+	EstimatedProfit float64 `json:"estimatedProfit"`
+	LatencyEstimate int64   `json:"latencyEstimate"`
+	IsValid         bool    `json:"isValid"`
+}
+
+// WebSocketMessage represents a message sent over WebSocket
+type WebSocketMessage struct {
+	Channel string      `json:"channel"`
+	Type    string      `json:"type,omitempty"`
+	Data    interface{} `json:"data"`
+}
 
 // WebSocketServer handles WebSocket connections for the API
 type WebSocketServer struct {
-        orderBooks *orderbook.Manager
-        strategies *strategy.Engine
-        clients    map[*Client]bool
-        broadcast  chan []byte
-        register   chan *Client
-        unregister chan *Client
-        mu         sync.Mutex
-        upgrader   websocket.Upgrader
+	orderBooks *orderbook.Manager
+	strategies *strategy.Engine
+	clients    map[*Client]bool
+	broadcast  chan []byte
+	register   chan *Client
+	unregister chan *Client
+	mu         sync.Mutex
+	upgrader   websocket.Upgrader
 }
 
 // Client represents a connected WebSocket client
 type Client struct {
-        conn      *websocket.Conn
-        server    *WebSocketServer
-        send      chan []byte
-        mu        sync.Mutex
-        symbolSubs map[string]bool
-        channelSubs map[string]bool
+	conn        *websocket.Conn
+	server      *WebSocketServer
+	send        chan []byte
+	mu          sync.Mutex
+	symbolSubs  map[string]bool
+	channelSubs map[string]bool
 }
 
 // NewWebSocketServer creates a new WebSocket server
 func NewWebSocketServer(books *orderbook.Manager, strategies *strategy.Engine) *WebSocketServer {
-        return &WebSocketServer{
-                orderBooks: books,
-                strategies: strategies,
-                clients:    make(map[*Client]bool),
-                broadcast:  make(chan []byte, 256),
-                register:   make(chan *Client),
-                unregister: make(chan *Client),
-                upgrader: websocket.Upgrader{
-                        ReadBufferSize:  1024,
-                        WriteBufferSize: 1024,
-                        CheckOrigin: func(r *http.Request) bool {
-                                return true // Allow all origins for now
-                        },
-                },
-        }
+	return &WebSocketServer{
+		orderBooks: books,
+		strategies: strategies,
+		clients:    make(map[*Client]bool),
+		broadcast:  make(chan []byte, 256),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+		upgrader: websocket.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+			CheckOrigin: func(r *http.Request) bool {
+				return true // Allow all origins for now
+			},
+		},
+	}
 }
 
 // ServeHTTP handles WebSocket connections
 func (s *WebSocketServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-        conn, err := s.upgrader.Upgrade(w, r, nil)
-        if err != nil {
-                log.Printf("Failed to upgrade to WebSocket: %v", err)
-                return
-        }
+	conn, err := s.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("Failed to upgrade to WebSocket: %v", err)
+		return
+	}
 
-        client := &Client{
-                conn:       conn,
-                server:     s,
-                send:       make(chan []byte, 256),
-                symbolSubs: make(map[string]bool),
-                channelSubs: make(map[string]bool),
-        }
+	client := &Client{
+		conn:        conn,
+		server:      s,
+		send:        make(chan []byte, 256),
+		symbolSubs:  make(map[string]bool),
+		channelSubs: make(map[string]bool),
+	}
 
-        s.register <- client
+	s.register <- client
 
-        go client.readPump()
-        go client.writePump()
+	go client.readPump()
+	go client.writePump()
 }
 
 // Run starts the WebSocket server
 func (s *WebSocketServer) Run() {
-        for {
-                select {
-                case client := <-s.register:
-                        s.mu.Lock()
-                        s.clients[client] = true
-                        s.mu.Unlock()
-                        log.Printf("New WebSocket client connected: %s", client.conn.RemoteAddr())
+	for {
+		select {
+		case client := <-s.register:
+			s.mu.Lock()
+			s.clients[client] = true
+			s.mu.Unlock()
+			log.Printf("New WebSocket client connected: %s", client.conn.RemoteAddr())
 
-                case client := <-s.unregister:
-                        s.mu.Lock()
-                        if _, ok := s.clients[client]; ok {
-                                delete(s.clients, client)
-                                close(client.send)
-                        }
-                        s.mu.Unlock()
-                        log.Printf("WebSocket client disconnected: %s", client.conn.RemoteAddr())
+		case client := <-s.unregister:
+			s.mu.Lock()
+			if _, ok := s.clients[client]; ok {
+				delete(s.clients, client)
+				close(client.send)
+			}
+			s.mu.Unlock()
+			log.Printf("WebSocket client disconnected: %s", client.conn.RemoteAddr())
 
-                case message := <-s.broadcast:
-                        s.mu.Lock()
-                        for client := range s.clients {
-                                select {
-                                case client.send <- message:
-                                default:
-                                        close(client.send)
-                                        delete(s.clients, client)
-                                }
-                        }
-                        s.mu.Unlock()
-                }
-        }
+		case message := <-s.broadcast:
+			s.mu.Lock()
+			for client := range s.clients {
+				select {
+				case client.send <- message:
+				default:
+					close(client.send)
+					delete(s.clients, client)
+				}
+			}
+			s.mu.Unlock()
+		}
+	}
 }
 
 // Close closes all WebSocket connections
 func (s *WebSocketServer) Close() {
-        s.mu.Lock()
-        for client := range s.clients {
-                client.conn.Close()
-        }
-        s.mu.Unlock()
+	s.mu.Lock()
+	for client := range s.clients {
+		client.conn.Close()
+	}
+	s.mu.Unlock()
 }
 
 // BroadcastSampleData sends sample data to all clients for testing
 func (s *WebSocketServer) BroadcastSampleData() {
-        // Sample order book data
-        orderBookData := `{"channel":"orderbook","data":{"symbol":"BTCUSDT","timestamp":"2025-04-14T16:34:42Z","bids":[{"price":70123.45,"volume":2.35},{"price":70120.11,"volume":1.89},{"price":70115.67,"volume":5.21},{"price":70110.22,"volume":3.76},{"price":70105.89,"volume":7.12},{"price":70100.45,"volume":6.54},{"price":70095.67,"volume":4.32},{"price":70090.22,"volume":8.91},{"price":70085.34,"volume":3.45},{"price":70080.19,"volume":5.67}],"asks":[{"price":70125.78,"volume":1.56},{"price":70130.44,"volume":2.78},{"price":70135.89,"volume":4.32},{"price":70140.56,"volume":3.21},{"price":70145.22,"volume":6.78},{"price":70150.67,"volume":5.43},{"price":70155.34,"volume":2.87},{"price":70160.89,"volume":4.56},{"price":70165.45,"volume":7.89},{"price":70170.23,"volume":5.43}]}}`
-        
-        // Sample arbitrage opportunities data
-        arbitrageData := `{"channel":"arbitrage","data":[{"symbol":"BTCUSDT","buyExchange":"Binance","sellExchange":"Coinbase","buyPrice":70110.22,"sellPrice":70125.78,"profitPercent":0.22,"estimatedProfit":15.56,"latencyEstimate":8,"isValid":true},{"symbol":"ETHUSDT","buyExchange":"Kraken","sellExchange":"Binance","buyPrice":3510.15,"sellPrice":3518.75,"profitPercent":0.25,"estimatedProfit":8.60,"latencyEstimate":12,"isValid":true}]}`
-        
-        // Sample symbols list
-        symbolsData := `{"channel":"system","type":"symbols","data":["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","ADAUSDT"]}`
-        
-        // Sample strategy performance data
-        strategyData := `{"channel":"strategy","data":{"profitLoss":1250.75,"drawdown":125.5,"recentSignals":[{"symbol":"BTCUSDT","side":"buy","price":70110.22,"volume":0.5,"exchange":"Binance","timestamp":1744648000000},{"symbol":"ETHUSDT","side":"sell","price":3518.75,"volume":2.5,"exchange":"Coinbase","timestamp":1744647900000}]}}`
-        
-        // Broadcast all sample data to clients
-        s.mu.Lock()
-        for client := range s.clients {
-                // Always send all data to all clients in demo mode
-                client.sendMessage([]byte(orderBookData))
-                client.sendMessage([]byte(arbitrageData))
-                client.sendMessage([]byte(symbolsData))
-                client.sendMessage([]byte(strategyData))
-        }
-        s.mu.Unlock()
-        
-        // Print a log message to indicate data was sent
-        log.Println("Broadcasted sample data to all clients")
+	// Sample order book data
+	orderBookData := `{"channel":"orderbook","data":{"symbol":"BTCUSDT","timestamp":"2025-04-14T16:34:42Z","bids":[{"price":70123.45,"volume":2.35},{"price":70120.11,"volume":1.89},{"price":70115.67,"volume":5.21},{"price":70110.22,"volume":3.76},{"price":70105.89,"volume":7.12},{"price":70100.45,"volume":6.54},{"price":70095.67,"volume":4.32},{"price":70090.22,"volume":8.91},{"price":70085.34,"volume":3.45},{"price":70080.19,"volume":5.67}],"asks":[{"price":70125.78,"volume":1.56},{"price":70130.44,"volume":2.78},{"price":70135.89,"volume":4.32},{"price":70140.56,"volume":3.21},{"price":70145.22,"volume":6.78},{"price":70150.67,"volume":5.43},{"price":70155.34,"volume":2.87},{"price":70160.89,"volume":4.56},{"price":70165.45,"volume":7.89},{"price":70170.23,"volume":5.43}]}}`
+
+	// Sample arbitrage opportunities data
+	arbitrageData := `{"channel":"arbitrage","data":[{"symbol":"BTCUSDT","buyExchange":"Binance","sellExchange":"Coinbase","buyPrice":70110.22,"sellPrice":70125.78,"profitPercent":0.22,"estimatedProfit":15.56,"latencyEstimate":8,"isValid":true},{"symbol":"ETHUSDT","buyExchange":"Kraken","sellExchange":"Binance","buyPrice":3510.15,"sellPrice":3518.75,"profitPercent":0.25,"estimatedProfit":8.60,"latencyEstimate":12,"isValid":true}]}`
+
+	// Sample symbols list
+	symbolsData := `{"channel":"system","type":"symbols","data":["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","ADAUSDT"]}`
+
+	// Sample strategy performance data
+	strategyData := `{"channel":"strategy","data":{"profitLoss":1250.75,"drawdown":125.5,"recentSignals":[{"symbol":"BTCUSDT","side":"buy","price":70110.22,"volume":0.5,"exchange":"Binance","timestamp":1744648000000},{"symbol":"ETHUSDT","side":"sell","price":3518.75,"volume":2.5,"exchange":"Coinbase","timestamp":1744647900000}]}}`
+
+	// Broadcast all sample data to clients
+	s.mu.Lock()
+	for client := range s.clients {
+		// Always send all data to all clients in demo mode
+		client.sendMessage([]byte(orderBookData))
+		client.sendMessage([]byte(arbitrageData))
+		client.sendMessage([]byte(symbolsData))
+		client.sendMessage([]byte(strategyData))
+	}
+	s.mu.Unlock()
+
+	// Print a log message to indicate data was sent
+	log.Println("Broadcasted sample data to all clients")
 }
 
 // readPump processes incoming messages from the client
 func (c *Client) readPump() {
-        defer func() {
-                c.server.unregister <- c
-                c.conn.Close()
-        }()
+	defer func() {
+		c.server.unregister <- c
+		c.conn.Close()
+	}()
 
-        c.conn.SetReadLimit(4096) // 4KB
-        c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-        c.conn.SetPongHandler(func(string) error {
-                c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-                return nil
-        })
+	c.conn.SetReadLimit(4096) // 4KB
+	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	c.conn.SetPongHandler(func(string) error {
+		c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
 
-        for {
-                _, message, err := c.conn.ReadMessage()
-                if err != nil {
-                        if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-                                log.Printf("WebSocket error: %v", err)
-                        }
-                        break
-                }
+	for {
+		_, message, err := c.conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("WebSocket error: %v", err)
+			}
+			break
+		}
 
-                // Handle message
-                c.handleMessage(message)
-        }
+		// Handle message
+		c.handleMessage(message)
+	}
 }
 
 // writePump sends messages to the client
 func (c *Client) writePump() {
-        ticker := time.NewTicker(30 * time.Second)
-        defer func() {
-                ticker.Stop()
-                c.conn.Close()
-        }()
+	ticker := time.NewTicker(30 * time.Second)
+	defer func() {
+		ticker.Stop()
+		c.conn.Close()
+	}()
 
-        for {
-                select {
-                case message, ok := <-c.send:
-                        c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-                        if !ok {
-                                // Channel was closed
-                                c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-                                return
-                        }
+	for {
+		select {
+		case message, ok := <-c.send:
+			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if !ok {
+				// Channel was closed
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
 
-                        // Send each message individually to avoid JSON parsing errors
-                        if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
-                                log.Printf("Error writing message: %v", err)
-                                return
-                        }
+			// Send each message individually to avoid JSON parsing errors
+			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+				log.Printf("Error writing message: %v", err)
+				return
+			}
 
-                case <-ticker.C:
-                        c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-                        if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-                                return
-                        }
-                }
-        }
+		case <-ticker.C:
+			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+	}
 }
 
 // handleMessage processes an incoming message from the client
 func (c *Client) handleMessage(msg []byte) {
-    // This is a simplified implementation for demo purposes
-    // In a real system, we would properly parse JSON and handle various message types
-    
-    // For now, just send back some sample data for demonstration
-    // Let's send a sample order book update
-    sampleOrderBook := `{
+	// This is a simplified implementation for demo purposes
+	// In a real system, we would properly parse JSON and handle various message types
+
+	// For now, just send back some sample data for demonstration
+	// Let's send a sample order book update
+	sampleOrderBook := `{
         "channel": "orderbook",
         "data": {
             "symbol": "BTCUSDT",
@@ -245,11 +297,11 @@ func (c *Client) handleMessage(msg []byte) {
             ]
         }
     }`
-    
-    c.sendMessage([]byte(sampleOrderBook))
-    
-    // Also send some arbitrage opportunities
-    sampleArbitrage := `{
+
+	c.sendMessage([]byte(sampleOrderBook))
+
+	// Also send some arbitrage opportunities
+	sampleArbitrage := `{
         "channel": "arbitrage",
         "data": [
             {
@@ -276,28 +328,88 @@ func (c *Client) handleMessage(msg []byte) {
             }
         ]
     }`
-    
-    c.sendMessage([]byte(sampleArbitrage))
-    
-    // And some market data for the market list
-    sampleMarketData := `{
+
+	c.sendMessage([]byte(sampleArbitrage))
+
+	// And some market data for the market list
+	sampleMarketData := `{
         "channel": "system",
         "type": "symbols",
         "data": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "ADAUSDT"]
     }`
-    
-    c.sendMessage([]byte(sampleMarketData))
+
+	c.sendMessage([]byte(sampleMarketData))
 }
 
 // sendMessage sends a message to the client
 func (c *Client) sendMessage(msg []byte) {
-        c.mu.Lock()
-        defer c.mu.Unlock()
-        
-        select {
-        case c.send <- msg:
-        default:
-                c.server.unregister <- c
-                c.conn.Close()
-        }
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	select {
+	case c.send <- msg:
+	default:
+		c.server.unregister <- c
+		c.conn.Close()
+	}
+}
+
+// BroadcastOrderBookUpdate sends order book updates to subscribed clients
+func (s *WebSocketServer) BroadcastOrderBookUpdate(update OrderBookUpdate) {
+	msg := WebSocketMessage{
+		Channel: "orderbook",
+		Data:    update,
+	}
+
+	s.broadcastJSON(msg)
+}
+
+// BroadcastStrategyUpdate sends strategy updates to subscribed clients
+func (s *WebSocketServer) BroadcastStrategyUpdate(update StrategyUpdate) {
+	msg := WebSocketMessage{
+		Channel: "strategy",
+		Data:    update,
+	}
+
+	s.broadcastJSON(msg)
+}
+
+// BroadcastMarketData sends market data updates to all clients
+func (s *WebSocketServer) BroadcastMarketData(markets []MarketData) {
+	msg := WebSocketMessage{
+		Channel: "markets",
+		Data:    markets,
+	}
+
+	s.broadcastJSON(msg)
+}
+
+// BroadcastArbitrageData sends arbitrage opportunities to all clients
+func (s *WebSocketServer) BroadcastArbitrageData(opportunities []ArbitrageOpportunity) {
+	msg := WebSocketMessage{
+		Channel: "arbitrage",
+		Data:    opportunities,
+	}
+
+	s.broadcastJSON(msg)
+}
+
+// broadcastJSON marshals and broadcasts a message to all clients
+func (s *WebSocketServer) broadcastJSON(msg WebSocketMessage) {
+	data, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("Error marshaling message: %v", err)
+		return
+	}
+
+	s.mu.Lock()
+	for client := range s.clients {
+		select {
+		case client.send <- data:
+		default:
+			close(client.send)
+			delete(s.clients, client)
+		}
+	}
+	s.mu.Unlock()
 }
