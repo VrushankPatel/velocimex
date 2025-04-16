@@ -72,7 +72,7 @@ func main() {
         fs := http.FileServer(http.Dir("./ui"))
         router.Handle("/", fs)
 
-        // Always use port 5000 for Replit
+        // Always use port 5000
         go func() {
                 addr := "0.0.0.0:5000"
                 log.Printf("Starting HTTP server at %s", addr)
