@@ -9,11 +9,13 @@ const App = () => {
   const [strategies, setStrategies] = React.useState([]);
   const [symbols, setSymbols] = React.useState([]);
   const [selectedSymbol, setSelectedSymbol] = React.useState('');
+  const [isSimulation, setIsSimulation] = React.useState(false);
 
   // Initialize WebSocket connection on component mount
   React.useEffect(() => {
     // Create WebSocket connection
     const ws = new WebSocketClient();
+    ws.debug = true; // Enable debug logging
     
     // Define WebSocket event handlers
     ws.onOpen(() => {
@@ -63,6 +65,24 @@ const App = () => {
   // Handle WebSocket messages
   const handleWebSocketMessage = (message) => {
     switch (message.type) {
+      case 'status':
+        setIsSimulation(message.data.mode === 'simulation');
+        // Update connection status with mode
+        const statusElement = document.getElementById('connection-status');
+        if (statusElement) {
+          const [indicator, label] = statusElement.children;
+          if (connected) {
+            indicator.classList.remove('bg-gray-400', 'bg-red-500');
+            indicator.classList.add('bg-green-500');
+            label.textContent = `Connected (${message.data.mode})`;
+          } else {
+            indicator.classList.remove('bg-green-500', 'bg-gray-400');
+            indicator.classList.add('bg-red-500');
+            label.textContent = 'Disconnected';
+          }
+        }
+        break;
+
       case 'symbols':
         setSymbols(message.data);
         if (message.data.length > 0 && !selectedSymbol) {

@@ -38,7 +38,7 @@ func NewStockMarketFeed(config config.FeedConfig, norm *normalizer.Normalizer) (
         if config.APIKey == "" || config.APISecret == "" {
                 // No API keys, use simulation mode
                 feed.isSimulated = true
-                feed.simulator = simulator.NewMarketSimulator(100 * time.Millisecond)
+                feed.simulator = simulator.NewMarketSimulator(1 * time.Second)
         }
         
         return feed, nil

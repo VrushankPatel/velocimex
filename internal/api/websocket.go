@@ -1,6 +1,7 @@
 package api
 
 import (
+        "encoding/json"
         "log"
         "net/http"
         "sync"
@@ -69,6 +70,23 @@ func (s *WebSocketServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         }
 
         s.register <- client
+
+        // Send initial system status
+        status := map[string]interface{}{
+                "type": "status",
+                "data": map[string]interface{}{
+                        "status":      "running",
+                        "version":     "1.0.0",
+                        "timestamp":   time.Now().Unix(),
+                        "isSimulated": true,
+                        "mode":        "simulation",
+                },
+        }
+
+        statusJson, err := json.Marshal(status)
+        if err == nil {
+                client.send <- statusJson
+        }
 
         go client.readPump()
         go client.writePump()
@@ -144,6 +162,28 @@ func (s *WebSocketServer) BroadcastSampleData() {
         
         // Print a log message to indicate data was sent
         log.Println("Broadcasted sample data to all clients")
+}
+
+// BroadcastStatus sends system status to all connected clients
+func (s *WebSocketServer) BroadcastStatus() {
+        status := map[string]interface{}{
+                "type": "status",
+                "data": map[string]interface{}{
+                        "status":      "running",
+                        "version":     "1.0.0",
+                        "timestamp":   time.Now().Unix(),
+                        "isSimulated": true,
+                        "mode":        "simulation",
+                },
+        }
+
+        statusJson, err := json.Marshal(status)
+        if err != nil {
+                log.Printf("Failed to marshal system status: %v", err)
+                return
+        }
+
+        s.broadcast <- statusJson
 }
 
 // readPump processes incoming messages from the client

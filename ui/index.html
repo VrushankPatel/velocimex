@@ -5,244 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Velocimex - High Frequency Trading Platform</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="styles/velocimex.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
-    <script src="lib/websocket.js"></script>
-    <script src="js/app.js" defer></script>
-    <style>
-        :root {
-            --color-bg-primary: #f9fafb;
-            --color-bg-secondary: #ffffff;
-            --color-text-primary: #111827;
-            --color-text-secondary: #6b7280;
-            --color-border: #e5e7eb;
-            --color-bid: #22c55e;
-            --color-ask: #ef4444;
-            --color-primary: #4f46e5;
-            --color-primary-dark: #4338ca;
-            --color-volume-bid: rgba(34, 197, 94, 0.6);
-            --color-volume-ask: rgba(239, 68, 68, 0.6);
-        }
-
-        .dark-theme {
-            --color-bg-primary: #111827;
-            --color-bg-secondary: #1f2937;
-            --color-text-primary: #f9fafb;
-            --color-text-secondary: #9ca3af;
-            --color-border: #374151;
-            --color-bid: #34d399;
-            --color-ask: #f87171;
-            --color-primary: #6366f1;
-            --color-primary-dark: #4f46e5;
-            --color-volume-bid: rgba(52, 211, 153, 0.6);
-            --color-volume-ask: rgba(248, 113, 113, 0.6);
-        }
-        
-        /* Fix for dark mode text colors */
-        .dark-theme .text-gray-700,
-        .dark-theme .text-gray-800,
-        .dark-theme .text-gray-900,
-        .dark-theme h1,
-        .dark-theme h2,
-        .dark-theme h3,
-        .dark-theme h4,
-        .dark-theme p,
-        .dark-theme div,
-        .dark-theme span:not(.bg-green-500):not(.bg-red-500):not(.bg-yellow-500) {
-            color: var(--color-text-primary) !important;
-        }
-        
-        .dark-theme label.text-gray-700 {
-            color: var(--color-text-primary) !important;
-        }
-        
-        /* Enhanced dark mode styling */
-        .dark-theme .bg-white,
-        .dark-theme [class*="bg-white"] {
-            background-color: var(--color-bg-secondary) !important;
-            border: 1px solid rgba(255, 255, 255, 0.05) !important;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2) !important;
-        }
-        
-        .dark-theme .bg-gray-100,
-        .dark-theme [class*="bg-gray-100"] {
-            background-color: var(--color-bg-primary) !important;
-        }
-        
-        .dark-theme .bg-gray-200,
-        .dark-theme [class*="bg-gray-200"] {
-            background-color: #374151 !important;
-        }
-        
-        /* Make panels stand out in dark mode */
-        .dark-theme .rounded-lg.shadow-md {
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25), 
-                       inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-            border-radius: 0.5rem !important;
-            border: 1px solid rgba(255, 255, 255, 0.075) !important;
-            overflow: hidden;
-        }
-        
-        .dark-theme .rounded-lg.shadow-md h2 {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            padding-bottom: 0.75rem;
-            margin-bottom: 1rem;
-            font-weight: 600;
-            color: #E5E7EB !important;
-        }
-        
-        /* Improved dark mode title bar */
-        .dark-theme header.bg-indigo-600 {
-            background: linear-gradient(90deg, #4F46E5, #6366F1) !important;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .dark-theme #settings-modal .bg-white {
-            background-color: #1F2937 !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        }
-        
-        .dark-theme .text-gray-500, 
-        .dark-theme .text-gray-600,
-        .dark-theme .animate-pulse .bg-gray-200 {
-            color: var(--color-text-secondary) !important;
-        }
-        
-        .dark-theme select,
-        .dark-theme input {
-            background-color: #374151 !important;
-            color: var(--color-text-primary) !important;
-            border-color: #4B5563 !important;
-        }
-        
-        .dark-theme option {
-            background-color: #1F2937 !important;
-        }
-        
-        /* Improved tables and orderbook styling */
-        .dark-theme .orderbook-header {
-            color: #9CA3AF !important;
-            font-weight: 600;
-            background-color: rgba(17, 24, 39, 0.5) !important;
-            padding: 0.5rem 0.25rem !important;
-            border-radius: 0.25rem;
-        }
-        
-        .dark-theme .orderbook-row {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-            padding: 0.25rem 0;
-        }
-        
-        /* Nice volume bars in dark mode */
-        .dark-theme .volume-bar-bid {
-            background-color: rgba(16, 185, 129, 0.25) !important;
-        }
-        
-        .dark-theme .volume-bar-ask {
-            background-color: rgba(239, 68, 68, 0.25) !important;
-        }
-
-        body {
-            background-color: var(--color-bg-primary);
-            color: var(--color-text-primary);
-            transition: background-color 0.3s, color 0.3s;
-        }
-
-        .bg-white, .bg-gray-100 {
-            background-color: var(--color-bg-secondary);
-        }
-
-        .text-gray-500, .text-gray-600 {
-            color: var(--color-text-secondary);
-        }
-
-        .border, .border-b {
-            border-color: var(--color-border);
-        }
-
-        .orderbook-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            padding: 2px 0;
-        }
-        
-        .orderbook-header {
-            font-weight: bold;
-            border-bottom: 1px solid var(--color-border);
-            padding-bottom: 8px;
-            margin-bottom: 8px;
-        }
-        
-        .price-up {
-            color: var(--color-bid);
-        }
-        
-        .price-down {
-            color: var(--color-ask);
-        }
-        
-        .bid {
-            color: var(--color-bid);
-        }
-        
-        .ask {
-            color: var(--color-ask);
-        }
-        
-        .spread {
-            font-size: 0.8rem;
-            color: var(--color-text-secondary);
-        }
-        
-        .volume-bar {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            z-index: -1;
-            opacity: 0.15;
-        }
-        
-        .volume-bar-bid {
-            background-color: var(--color-volume-bid);
-            right: 0;
-        }
-        
-        .volume-bar-ask {
-            background-color: var(--color-volume-ask);
-            left: 0;
-        }
-
-        /* Dark mode ShadCN-like UI components */
-        .shadow-md {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-
-        .dark-theme .shadow-md {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.12);
-        }
-
-        /* Status indicator */
-        .connection-indicator {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        
-        /* Market warning banner */
-        .market-warning {
-            background-color: rgba(245, 158, 11, 0.1);
-            border-left: 4px solid #f59e0b;
-            padding: 0.75rem 1rem;
-            margin-bottom: 1rem;
-            border-radius: 0.25rem;
-        }
-        
-        .dark-theme .market-warning {
-            background-color: rgba(245, 158, 11, 0.15);
-        }
-    </style>
+    <script type="module" src="js/velocimex.js"></script>
+    <script type="module" src="js/app.js"></script>
 </head>
 <body class="bg-gray-100 text-gray-900">
     <div class="min-h-screen flex flex-col">
@@ -347,19 +113,41 @@
                 <!-- Strategy Performance -->
                 <div class="bg-white rounded-lg shadow-md p-4 col-span-2">
                     <h2 class="text-xl font-semibold mb-4">Strategy Performance</h2>
-                    <div class="h-64">
+                    
+                    <!-- Performance Stats -->
+                    <div class="performance-stats mb-4">
+                        <div class="stat-card">
+                            <div class="label">P/L (24h)</div>
+                            <div class="value" id="profit-loss">$0.00</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Max Drawdown</div>
+                            <div class="value" id="max-drawdown">0.00%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Win Rate</div>
+                            <div class="value" id="win-rate">0.00%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Trades</div>
+                            <div class="value" id="trade-count">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Chart -->
+                    <div class="strategy-performance">
                         <canvas id="performance-chart"></canvas>
                     </div>
                 </div>
 
                 <!-- Recent Signals -->
-                <div class="bg-white rounded-lg shadow-md p-4 col-span-1">
+                <div class="bg-white rounded-lg shadow-md p-4">
                     <h2 class="text-xl font-semibold mb-4">Recent Signals</h2>
-                    <div id="signals-list" class="space-y-2">
+                    <div id="signals-list" class="strategy-signals">
                         <div class="animate-pulse">
-                            <div class="h-16 bg-gray-200 rounded w-full mb-2"></div>
-                            <div class="h-16 bg-gray-200 rounded w-full mb-2"></div>
-                            <div class="h-16 bg-gray-200 rounded w-full mb-2"></div>
+                            <div class="h-16 bg-gray-200 rounded mb-2"></div>
+                            <div class="h-16 bg-gray-200 rounded mb-2"></div>
+                            <div class="h-16 bg-gray-200 rounded"></div>
                         </div>
                     </div>
                 </div>
