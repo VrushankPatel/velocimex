@@ -1,128 +1,64 @@
 server:
-  host: 0.0.0.0
-  port: 8000
-  uiPort: 5000
-  shutdownTimeout: 5s
-  readTimeout: 10s
-  writeTimeout: 10s
+  host: "localhost"
+  port: 8080
+  uiPort: 3000
+  shutdownTimeout: 10s
+  readTimeout: 5s
+  writeTimeout: 5s
   enableCORS: true
   allowedOrigins:
-    - "*"
+    - "http://localhost:3000"
+    - "http://localhost:8080"
 
 feeds:
-  - name: binance
-    type: websocket
-    url: wss://stream.binance.com:9443/ws
+  - name: "binance"
+    type: "websocket"
+    url: "wss://stream.binance.com:9443/ws"
     subscriptions:
-      - btcusdt@depth
-      - ethusdt@depth
-      - btcusdt@trade
-      - ethusdt@trade
+      - "btcusdt@depth"
+      - "ethusdt@depth"
     symbols:
-      - BTCUSDT
-      - ETHUSDT
-
-  - name: coinbase
-    type: websocket
-    url: wss://ws-feed.pro.coinbase.com
+      - "BTCUSDT"
+      - "ETHUSDT"
+    apiKey: ""
+    apiSecret: ""
+  - name: "coinbase"
+    type: "websocket"
+    url: "wss://ws-feed.pro.coinbase.com"
     subscriptions:
-      - level2
-      - matches
+      - "level2"
     symbols:
-      - BTC-USD
-      - ETH-USD
-
-  - name: kraken
-    type: websocket
-    url: wss://ws.kraken.com
+      - "BTC-USD"
+      - "ETH-USD"
+    apiKey: ""
+    apiSecret: ""
+  - name: "kraken"
+    type: "websocket"
+    url: "wss://ws.kraken.com"
     subscriptions:
-      - book
-      - trade
+      - "book"
     symbols:
-      - XBT/USD
-      - ETH/USD
-      
-  # Stock market feeds
-  - name: NASDAQ
-    type: stock
-    url: https://api.nasdaq.com
+      - "XBT/USD"
+      - "ETH/USD"
     apiKey: ""
     apiSecret: ""
-    symbols:
-      - AAPL
-      - MSFT
-      - GOOGL
-      - AMZN
-      - TSLA
-      
-  - name: NYSE
-    type: stock
-    url: https://api.nyse.com
-    apiKey: ""
-    apiSecret: ""
-    symbols:
-      - JPM
-      - BAC
-      - WMT
-      - DIS
-      - XOM
-      
-  - name: NSE
-    type: stock
-    url: https://api.nseindia.com
-    apiKey: ""
-    apiSecret: ""
-    symbols:
-      - RELIANCE
-      - TCS
-      - INFY
-      - HDFCBANK
-      - HINDUNILVR
-      
-  - name: BSE
-    type: stock
-    url: https://api.bseindia.com
-    apiKey: ""
-    apiSecret: ""
-    symbols:
-      - TATASTEEL.BSE
-      - BAJFINANCE.BSE
-      - ICICIBANK.BSE
-      - SBIN.BSE
-      - AXISBANK.BSE
-      
-  - name: S&P500
-    type: stock
-    url: https://api.sp500.com
-    apiKey: ""
-    apiSecret: ""
-    symbols:
-      - SPY
-      
-  - name: DowJones
-    type: stock
-    url: https://api.dowjones.com
-    apiKey: ""
-    apiSecret: ""
-    symbols:
-      - DIA
 
 strategies:
   arbitrage:
-    name: CrossExchangeArbitrage
+    name: "Cross-Exchange Arbitrage"
     symbols:
-      - BTCUSD
-      - ETHUSD
+      - "BTC/USD"
+      - "ETH/USD"
     exchanges:
-      - binance
-      - coinbase
-      - kraken
-    updateInterval: 1s
+      - "binance"
+      - "coinbase"
+      - "kraken"
+    updateInterval: 5s
     minimumSpread: 0.1
     maxSlippage: 0.05
     minProfitThreshold: 0.2
-    maxExecutionLatency: 500
-    simultaneousExchanges: 3
+    maxExecutionLatency: 100
+    simultaneousExchanges: 2
     exchangeFees:
       binance: 0.001
       coinbase: 0.005
@@ -133,14 +69,14 @@ simulation:
   paperTrading:
     enabled: true
     initialBalance:
-      USD: 10000.0
-      BTC: 0.5
-      ETH: 5.0
+      USD: 100000.0
+      BTC: 10.0
+      ETH: 100.0
     latencySimulation: true
-    baseLatency: 50
-    randomLatency: 20
-    slippageModel: fixed
-    fixedSlippage: 0.05
+    baseLatency: 20
+    randomLatency: 10
+    slippageModel: "fixed"
+    fixedSlippage: 0.02
     exchangeFees:
       binance: 0.001
       coinbase: 0.005

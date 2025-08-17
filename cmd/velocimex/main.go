@@ -2,6 +2,7 @@ package main
 
 import (
         "flag"
+	"fmt"
         "log"
         "net/http"
         "os"
@@ -72,17 +73,17 @@ func main() {
         fs := http.FileServer(http.Dir("./ui"))
         router.Handle("/", fs)
 
-        // Always use port 5000
+        // Start the HTTP server
         go func() {
-                addr := "0.0.0.0:5000"
-                log.Printf("Starting HTTP server at %s", addr)
+                addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
+                log.Printf("Starting HTTP server on %s", addr)
                 if err := http.ListenAndServe(addr, router); err != nil {
                         log.Fatalf("HTTP server error: %v", err)
                 }
         }()
-        
+
         // Print UI URL
-        log.Printf("Web UI available at http://localhost:5000")
+        log.Printf("Web UI available at http://%s:%d", cfg.Server.Host, cfg.Server.Port)
         
         // Setup signal handling for graceful shutdown
         sigChan := make(chan os.Signal, 1)
