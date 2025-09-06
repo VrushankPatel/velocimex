@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
+	
+	"github.com/google/uuid"
 )
 
 // AlertConfig represents the configuration for the alert system
@@ -150,12 +153,12 @@ func SaveAlertConfig(filename string, config *AlertConfig) error {
 }
 
 // SetupAlertManager creates and configures an alert manager from config
-func SetupAlertManager(config *AlertConfig, logger logger.Logger) (*VelocimexAlertManager, error) {
+func SetupAlertManager(config *AlertConfig, logger interface{}) (*VelocimexAlertManager, error) {
 	if !config.Enabled {
 		return nil, fmt.Errorf("alert system is disabled")
 	}
 
-	am := NewAlertManager(logger)
+	am := NewAlertManager(nil)
 	
 	// Register channels
 	factory := NewChannelFactory()
@@ -228,7 +231,7 @@ func createRuleFromConfig(config map[string]interface{}) (*AlertRule, error) {
 	}
 	
 	return &AlertRule{
-		ID:         uuid.New().String(),
+		ID:         uuid.NewString(),
 		Name:       name,
 		Type:       AlertType(typeStr),
 		Severity:   AlertSeverity(severityStr),

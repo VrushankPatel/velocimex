@@ -131,7 +131,7 @@ func (w *WebSocketChannel) Send(alert *Alert) error {
 	w.mutex.RLock()
 	defer w.mutex.RUnlock()
 	
-	alertJSON, err := json.Marshal(map[string]interface{}{
+	_, err := json.Marshal(map[string]interface{}{
 		"type":     "alert",
 		"alert":    alert,
 		"timestamp": time.Now(),

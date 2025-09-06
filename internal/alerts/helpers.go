@@ -40,10 +40,7 @@ func Init(logger logger.Logger) error {
 	
 	globalAlertManager = manager
 	
-	logger.Info("Alert system initialized", map[string]interface{}{
-		"rules_count":    len(manager.GetRules()),
-		"channels_count": len(manager.channels),
-	})
+	logger.Info("alert", "Alert system initialized")
 	
 	return nil
 }

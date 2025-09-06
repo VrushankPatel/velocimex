@@ -2,14 +2,13 @@ package alerts
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"velocimex/internal/logger"
 )
 
@@ -68,8 +67,8 @@ func TestAlertTypes(t *testing.T) {
 		t.Errorf("Expected AlertTypePrice to be 'price', got %s", AlertTypePrice)
 	}
 	
-	if AlertSeverityHigh != "high" {
-		t.Errorf("Expected AlertSeverityHigh to be 'high', got %s", AlertSeverityHigh)
+	if SeverityHigh != "high" {
+		t.Errorf("Expected SeverityHigh to be 'high', got %s", SeverityHigh)
 	}
 }
 
@@ -121,10 +120,9 @@ func TestAlert(t *testing.T) {
 
 func TestVelocimexAlertManager(t *testing.T) {
 	// Setup
-	logger := logger.NewVelocimexLogger(logger.Config{
-		Level:       "debug",
-		Output:      "console",
-		Development: true,
+	logger, _ := logger.New(&logger.Config{
+		Level:  logger.DEBUG,
+		Output: "console",
 	})
 	
 	am := NewAlertManager(logger)
@@ -232,10 +230,9 @@ func TestVelocimexAlertManager(t *testing.T) {
 }
 
 func TestAlertConditions(t *testing.T) {
-	logger := logger.NewVelocimexLogger(logger.Config{
-		Level:       "debug",
-		Output:      "console",
-		Development: true,
+	logger, _ := logger.New(&logger.Config{
+		Level:  logger.DEBUG,
+		Output: "console",
 	})
 	
 	am := NewAlertManager(logger)
@@ -308,10 +305,9 @@ func TestAlertConditions(t *testing.T) {
 }
 
 func TestAlertMessageFormatting(t *testing.T) {
-	logger := logger.NewVelocimexLogger(logger.Config{
-		Level:       "debug",
-		Output:      "console",
-		Development: true,
+	logger, _ := logger.New(&logger.Config{
+		Level:  logger.DEBUG,
+		Output: "console",
 	})
 	
 	am := NewAlertManager(logger)
@@ -388,10 +384,9 @@ func TestChannels(t *testing.T) {
 }
 
 func TestChannelRegistration(t *testing.T) {
-	logger := logger.NewVelocimexLogger(logger.Config{
-		Level:       "debug",
-		Output:      "console",
-		Development: true,
+	logger, _ := logger.New(&logger.Config{
+		Level:  logger.DEBUG,
+		Output: "console",
 	})
 	
 	am := NewAlertManager(logger)
@@ -423,10 +418,9 @@ func TestChannelRegistration(t *testing.T) {
 }
 
 func TestAlertFiltering(t *testing.T) {
-	logger := logger.NewVelocimexLogger(logger.Config{
-		Level:       "debug",
-		Output:      "console",
-		Development: true,
+	logger, _ := logger.New(&logger.Config{
+		Level:  logger.DEBUG,
+		Output: "console",
 	})
 	
 	am := NewAlertManager(logger)
@@ -598,7 +592,7 @@ func TestAlertRuleBuilder(t *testing.T) {
 	
 	// Test validation failure
 	invalidBuilder := NewAlertRuleBuilder()
-	invalidRule := invalidBuilder.Build()
+	_ = invalidBuilder.Build()
 	err = invalidBuilder.Validate()
 	if err == nil {
 		t.Error("Expected validation to fail for empty rule")
@@ -607,10 +601,9 @@ func TestAlertRuleBuilder(t *testing.T) {
 
 func TestGlobalAlertFunctions(t *testing.T) {
 	// Setup test logger
-	logger := logger.NewVelocimexLogger(logger.Config{
-		Level:       "debug",
-		Output:      "console",
-		Development: true,
+	logger, _ := logger.New(&logger.Config{
+		Level:  logger.DEBUG,
+		Output: "console",
 	})
 	
 	// Test global functions
@@ -661,10 +654,9 @@ func TestGlobalAlertFunctions(t *testing.T) {
 
 func TestSetupAlertManager(t *testing.T) {
 	// Setup test logger
-	logger := logger.NewVelocimexLogger(logger.Config{
-		Level:       "debug",
-		Output:      "console",
-		Development: true,
+	logger, _ := logger.New(&logger.Config{
+		Level:  logger.DEBUG,
+		Output: "console",
 	})
 	
 	// Test with disabled config
@@ -708,10 +700,9 @@ func TestSetupAlertManager(t *testing.T) {
 }
 
 func TestConcurrentOperations(t *testing.T) {
-	logger := logger.NewVelocimexLogger(logger.Config{
-		Level:       "debug",
-		Output:      "console",
-		Development: true,
+	logger, _ := logger.New(&logger.Config{
+		Level:  logger.DEBUG,
+		Output: "console",
 	})
 	
 	am := NewAlertManager(logger)

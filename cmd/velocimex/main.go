@@ -65,7 +65,15 @@ func main() {
         metricsInstance := metrics.New()
         
         // Initialize metrics server
-        metricsServer := metrics.NewServer(cfg.Metrics, metricsInstance)
+        metricsConfig := metrics.ServerConfig{
+                Enabled:     cfg.Metrics.Enabled,
+                Address:     cfg.Metrics.Address,
+                Port:        cfg.Metrics.Port,
+                Path:        cfg.Metrics.Path,
+                Timeout:     cfg.Metrics.Timeout,
+                EnablePprof: cfg.Metrics.EnablePprof,
+        }
+        metricsServer := metrics.NewServer(metricsConfig, metricsInstance)
         
         // Setup market data feeds
         feedManager := feeds.NewManager(normalizer, cfg.Feeds)

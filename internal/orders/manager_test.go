@@ -2,6 +2,7 @@ package orders
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -22,19 +23,44 @@ func (m *MockSmartRouter) RouteOrder(ctx context.Context, req *OrderRequest) (*R
 		return m.RouteFunc(ctx, req)
 	}
 	return &RoutingDecision{
-		Exchange: "mock_exchange",
-		Price:    req.Price,
-		Volume:   req.Quantity,
-		Score:    1.0,
-		Latency:  100 * time.Millisecond,
+		OrderID:         "mock_order_123",
+		Exchange:        "mock_exchange",
+		Symbol:          req.Symbol,
+		Side:            req.Side,
+		Route:           "direct",
+		Reason:          "best_price",
+		ExpectedSlippage: decimal.Zero,
+		ExpectedFee:     decimal.Zero,
+		Confidence:      1.0,
+		Timestamp:       time.Now(),
 	}, nil
+}
+
+func (m *MockSmartRouter) GetBestPrice(ctx context.Context, symbol string, side OrderSide, quantity decimal.Decimal) (*RoutingDecision, error) {
+	return &RoutingDecision{
+		OrderID:         "mock_best_price_123",
+		Exchange:        "mock_exchange",
+		Symbol:          symbol,
+		Side:            side,
+		Route:           "best_price",
+		Reason:          "price_check",
+		ExpectedSlippage: decimal.Zero,
+		ExpectedFee:     decimal.Zero,
+		Confidence:      1.0,
+		Timestamp:       time.Now(),
+	}, nil
+}
+
+func (m *MockSmartRouter) UpdateMarketData(symbol string, data interface{}) {
+	// Mock implementation - do nothing
 }
 
 // TestOrderManagerInitialization tests the initialization of the order manager
 func TestOrderManagerInitialization(t *testing.T) {
 	config := DefaultManagerConfig()
 	mockRouter := &MockSmartRouter{}
-	metricsWrapper := metrics.NewWrapper(&metrics.Config{Enabled: false})
+	metricsInstance := metrics.New()
+	metricsWrapper := metrics.NewWrapper(metricsInstance, false)
 
 	manager := NewManager(config, mockRouter, metricsWrapper)
 	assert.NotNil(t, manager)
@@ -48,7 +74,8 @@ func TestOrderManagerInitialization(t *testing.T) {
 func TestSubmitOrder(t *testing.T) {
 	config := DefaultManagerConfig()
 	mockRouter := &MockSmartRouter{}
-	metricsWrapper := metrics.NewWrapper(&metrics.Config{Enabled: false})
+	metricsInstance := metrics.New()
+	metricsWrapper := metrics.NewWrapper(metricsInstance, false)
 
 	manager := NewManager(config, mockRouter, metricsWrapper)
 	ctx := context.Background()
@@ -77,7 +104,8 @@ func TestSubmitOrder(t *testing.T) {
 func TestCancelOrder(t *testing.T) {
 	config := DefaultManagerConfig()
 	mockRouter := &MockSmartRouter{}
-	metricsWrapper := metrics.NewWrapper(&metrics.Config{Enabled: false})
+	metricsInstance := metrics.New()
+	metricsWrapper := metrics.NewWrapper(metricsInstance, false)
 
 	manager := NewManager(config, mockRouter, metricsWrapper)
 	ctx := context.Background()
@@ -112,7 +140,8 @@ func TestCancelOrder(t *testing.T) {
 func TestGetOrdersWithFilters(t *testing.T) {
 	config := DefaultManagerConfig()
 	mockRouter := &MockSmartRouter{}
-	metricsWrapper := metrics.NewWrapper(&metrics.Config{Enabled: false})
+	metricsInstance := metrics.New()
+	metricsWrapper := metrics.NewWrapper(metricsInstance, false)
 
 	manager := NewManager(config, mockRouter, metricsWrapper)
 	ctx := context.Background()
@@ -153,7 +182,8 @@ func TestGetOrdersWithFilters(t *testing.T) {
 func TestPositionManagement(t *testing.T) {
 	config := DefaultManagerConfig()
 	mockRouter := &MockSmartRouter{}
-	metricsWrapper := metrics.NewWrapper(&metrics.Config{Enabled: false})
+	metricsInstance := metrics.New()
+	metricsWrapper := metrics.NewWrapper(metricsInstance, false)
 
 	manager := NewManager(config, mockRouter, metricsWrapper)
 	ctx := context.Background()
@@ -234,7 +264,8 @@ func TestPositionManagement(t *testing.T) {
 func TestOrderValidation(t *testing.T) {
 	config := DefaultManagerConfig()
 	mockRouter := &MockSmartRouter{}
-	metricsWrapper := metrics.NewWrapper(&metrics.Config{Enabled: false})
+	metricsInstance := metrics.New()
+	metricsWrapper := metrics.NewWrapper(metricsInstance, false)
 
 	manager := NewManager(config, mockRouter, metricsWrapper)
 	ctx := context.Background()
@@ -266,7 +297,8 @@ func TestOrderValidation(t *testing.T) {
 func TestConcurrentOrderSubmission(t *testing.T) {
 	config := DefaultManagerConfig()
 	mockRouter := &MockSmartRouter{}
-	metricsWrapper := metrics.NewWrapper(&metrics.Config{Enabled: false})
+	metricsInstance := metrics.New()
+	metricsWrapper := metrics.NewWrapper(metricsInstance, false)
 
 	manager := NewManager(config, mockRouter, metricsWrapper)
 	ctx := context.Background()
@@ -312,7 +344,8 @@ func TestPaperTradingMode(t *testing.T) {
 	config := DefaultManagerConfig()
 	config.EnablePaperTrading = true
 	mockRouter := &MockSmartRouter{}
-	metricsWrapper := metrics.NewWrapper(&metrics.Config{Enabled: false})
+	metricsInstance := metrics.New()
+	metricsWrapper := metrics.NewWrapper(metricsInstance, false)
 
 	manager := NewManager(config, mockRouter, metricsWrapper)
 	ctx := context.Background()
@@ -347,7 +380,8 @@ func TestOrderTimeout(t *testing.T) {
 	config := DefaultManagerConfig()
 	config.OrderTimeout = 100 * time.Millisecond
 	mockRouter := &MockSmartRouter{}
-	metricsWrapper := metrics.NewWrapper(&metrics.Config{Enabled: false})
+	metricsInstance := metrics.New()
+	metricsWrapper := metrics.NewWrapper(metricsInstance, false)
 
 	manager := NewManager(config, mockRouter, metricsWrapper)
 	ctx := context.Background()
@@ -382,7 +416,8 @@ func TestOrderTimeout(t *testing.T) {
 func TestStatistics(t *testing.T) {
 	config := DefaultManagerConfig()
 	mockRouter := &MockSmartRouter{}
-	metricsWrapper := metrics.NewWrapper(&metrics.Config{Enabled: false})
+	metricsInstance := metrics.New()
+	metricsWrapper := metrics.NewWrapper(metricsInstance, false)
 
 	manager := NewManager(config, mockRouter, metricsWrapper)
 	ctx := context.Background()
@@ -420,16 +455,22 @@ func TestSmartRouterIntegration(t *testing.T) {
 	mockRouter := &MockSmartRouter{
 		RouteFunc: func(ctx context.Context, req *OrderRequest) (*RoutingDecision, error) {
 			return &RoutingDecision{
-				Exchange: "binance",
-				Price:    req.Price,
-				Volume:   req.Quantity,
-				Score:    0.95,
-				Latency:  50 * time.Millisecond,
+				OrderID:         "test_order_123",
+				Exchange:        "binance",
+				Symbol:          req.Symbol,
+				Side:            req.Side,
+				Route:           "direct",
+				Reason:          "test_route",
+				ExpectedSlippage: decimal.Zero,
+				ExpectedFee:     decimal.Zero,
+				Confidence:      0.95,
+				Timestamp:       time.Now(),
 			}, nil
 		},
 	}
 	
-	metricsWrapper := metrics.NewWrapper(&metrics.Config{Enabled: false})
+	metricsInstance := metrics.New()
+	metricsWrapper := metrics.NewWrapper(metricsInstance, false)
 
 	manager := NewManager(config, mockRouter, metricsWrapper)
 	ctx := context.Background()
@@ -455,7 +496,8 @@ func TestSmartRouterIntegration(t *testing.T) {
 func TestContextCancellation(t *testing.T) {
 	config := DefaultManagerConfig()
 	mockRouter := &MockSmartRouter{}
-	metricsWrapper := metrics.NewWrapper(&metrics.Config{Enabled: false})
+	metricsInstance := metrics.New()
+	metricsWrapper := metrics.NewWrapper(metricsInstance, false)
 
 	manager := NewManager(config, mockRouter, metricsWrapper)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -481,7 +523,8 @@ func TestErrorHandling(t *testing.T) {
 			return nil, fmt.Errorf("routing failed")
 		},
 	}
-	metricsWrapper := metrics.NewWrapper(&metrics.Config{Enabled: false})
+	metricsInstance := metrics.New()
+	metricsWrapper := metrics.NewWrapper(metricsInstance, false)
 
 	manager := NewManager(config, mockRouter, metricsWrapper)
 	ctx := context.Background()
@@ -498,7 +541,7 @@ func TestErrorHandling(t *testing.T) {
 		Price:    decimal.NewFromFloat(50000.0),
 	}
 
-	_, err := manager.SubmitOrder(ctx, req)
+	_, err = manager.SubmitOrder(ctx, req)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "routing failed")
 }
@@ -507,7 +550,8 @@ func TestErrorHandling(t *testing.T) {
 func TestConcurrentAccess(t *testing.T) {
 	config := DefaultManagerConfig()
 	mockRouter := &MockSmartRouter{}
-	metricsWrapper := metrics.NewWrapper(&metrics.Config{Enabled: false})
+	metricsInstance := metrics.New()
+	metricsWrapper := metrics.NewWrapper(metricsInstance, false)
 
 	manager := NewManager(config, mockRouter, metricsWrapper)
 	ctx := context.Background()
@@ -548,7 +592,7 @@ func TestConcurrentAccess(t *testing.T) {
 			orders, err := manager.GetOrders(ctx, nil)
 			assert.NoError(t, err)
 			assert.NotNil(t, orders)
-		}(i)
+		}()
 	}
 
 	// Concurrent statistics retrieval
@@ -559,7 +603,7 @@ func TestConcurrentAccess(t *testing.T) {
 			
 			stats := manager.GetStatistics()
 			assert.NotNil(t, stats)
-		}(i)
+		}()
 	}
 
 	wg.Wait()

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -256,7 +257,7 @@ func TestContextFunctions(t *testing.T) {
 
 	// Test WithContext
 	logger := WithContext(ctx)
-	if logger.(*VelocimexLogger).traceID != "test-trace-123" {
+	if logger.GetTraceID() != "test-trace-123" {
 		t.Error("Trace ID not set in logger from context")
 	}
 }

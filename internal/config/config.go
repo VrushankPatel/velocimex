@@ -8,7 +8,6 @@ import (
 	
 	"velocimex/internal/backtesting"
 	"velocimex/internal/fix"
-	"velocimex/internal/metrics"
 	"velocimex/internal/plugins"
 	"velocimex/internal/risk"
 	"velocimex/internal/strategy"
@@ -22,9 +21,19 @@ type Config struct {
 	Risk        risk.RiskConfig        `yaml:"risk"`
 	Backtesting backtesting.BacktestConfig `yaml:"backtesting"`
 	Plugins     plugins.PluginConfig   `yaml:"plugins"`
-	Metrics     metrics.ServerConfig   `yaml:"metrics"`
+	Metrics     MetricsConfig          `yaml:"metrics"`
 	Strategies  StrategiesConfig       `yaml:"strategies"`
 	Simulation  SimulationConfig       `yaml:"simulation"`
+}
+
+// MetricsConfig contains metrics server configuration
+type MetricsConfig struct {
+	Enabled     bool          `yaml:"enabled"`
+	Address     string        `yaml:"address"`
+	Port        int           `yaml:"port"`
+	Path        string        `yaml:"path"`
+	Timeout     time.Duration `yaml:"timeout"`
+	EnablePprof bool          `yaml:"enable_pprof"`
 }
 
 // ServerConfig contains HTTP server configuration

@@ -224,6 +224,13 @@ func (l *VelocimexLogger) LogStrategySignal(strategy string, signal string, meta
 	})
 }
 
+// GetTraceID returns the trace ID
+func (l *VelocimexLogger) GetTraceID() string {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.traceID
+}
+
 // Close closes the logger and associated files
 func (l *VelocimexLogger) Close() error {
 	// In a real implementation, we would close file handles here

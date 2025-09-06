@@ -51,16 +51,12 @@ func (am *VelocimexAlertManager) AddRule(rule *AlertRule) error {
 	defer am.ruleMutex.Unlock()
 	
 	if rule.ID == "" {
-		rule.ID = uuid.New().String()
+		rule.ID = uuid.NewString()
 	}
 	
 	am.rules[rule.ID] = rule
 	
-	am.logger.Info("Added alert rule", map[string]interface{}{
-		"rule_id": rule.ID,
-		"name":    rule.Name,
-		"type":    rule.Type,
-	})
+	am.logger.Info("alert", "Added alert rule")
 	
 	return nil
 }
@@ -76,9 +72,7 @@ func (am *VelocimexAlertManager) RemoveRule(ruleID string) error {
 	
 	delete(am.rules, ruleID)
 	
-	am.logger.Info("Removed alert rule", map[string]interface{}{
-		"rule_id": ruleID,
-	})
+	am.logger.Info("alert", "Removed alert rule")
 	
 	return nil
 }
@@ -94,10 +88,7 @@ func (am *VelocimexAlertManager) UpdateRule(rule *AlertRule) error {
 	
 	am.rules[rule.ID] = rule
 	
-	am.logger.Info("Updated alert rule", map[string]interface{}{
-		"rule_id": rule.ID,
-		"name":    rule.Name,
-	})
+	am.logger.Info("alert", "Updated alert rule")
 	
 	return nil
 }
@@ -170,12 +161,7 @@ func (am *VelocimexAlertManager) TriggerAlert(rule *AlertRule, data interface{})
 	am.sendAlertToChannels(alert, rule.Channels)
 	
 	// Log alert
-	am.logger.Info("Alert triggered", map[string]interface{}{
-		"alert_id": alert.ID,
-		"rule_id":  rule.ID,
-		"type":     rule.Type,
-		"severity": rule.Severity,
-	})
+	am.logger.Info("alert", "Alert triggered")
 	
 	// Send event
 	am.eventChan <- &AlertEvent{
@@ -201,9 +187,7 @@ func (am *VelocimexAlertManager) AcknowledgeAlert(alertID string) error {
 	
 	alert.Acknowledged = true
 	
-	am.logger.Info("Alert acknowledged", map[string]interface{}{
-		"alert_id": alertID,
-	})
+	am.logger.Info("alert", "Alert acknowledged")
 	
 	return nil
 }
@@ -222,9 +206,7 @@ func (am *VelocimexAlertManager) ResolveAlert(alertID string) error {
 	now := time.Now()
 	alert.ResolvedAt = &now
 	
-	am.logger.Info("Alert resolved", map[string]interface{}{
-		"alert_id": alertID,
-	})
+	am.logger.Info("alert", "Alert resolved")
 	
 	return nil
 }
@@ -258,10 +240,7 @@ func (am *VelocimexAlertManager) RegisterChannel(channel AlertChannel) error {
 	
 	am.channels[channel.Name()] = channel
 	
-	am.logger.Info("Registered alert channel", map[string]interface{}{
-		"channel_name": channel.Name(),
-		"channel_type": channel.Type(),
-	})
+	am.logger.Info("alert", "Registered alert channel")
 	
 	return nil
 }
@@ -277,16 +256,14 @@ func (am *VelocimexAlertManager) RemoveChannel(channelName string) error {
 	
 	delete(am.channels, channelName)
 	
-	am.logger.Info("Removed alert channel", map[string]interface{}{
-		"channel_name": channelName,
-	})
+	am.logger.Info("alert", "Removed alert channel")
 	
 	return nil
 }
 
 // Start starts the alert manager
 func (am *VelocimexAlertManager) Start() error {
-	am.logger.Info("Starting alert manager")
+	am.logger.Info("alert", "Starting alert manager")
 	
 	// Start event processing
 	go am.processEvents()
@@ -296,7 +273,7 @@ func (am *VelocimexAlertManager) Start() error {
 
 // Stop stops the alert manager
 func (am *VelocimexAlertManager) Stop() error {
-	am.logger.Info("Stopping alert manager")
+	am.logger.Info("alert", "Stopping alert manager")
 	
 	am.cancel()
 	
@@ -409,10 +386,7 @@ func (am *VelocimexAlertManager) sendAlertToChannels(alert *Alert, channelNames 
 		for _, channel := range am.channels {
 			go func(ch AlertChannel) {
 				if err := ch.Send(alert); err != nil {
-					am.logger.Error("Failed to send alert to channel", map[string]interface{}{
-						"channel": ch.Name(),
-						"error":   err.Error(),
-					})
+					am.logger.Error("alert", "Failed to send alert to channel")
 				}
 			}(channel)
 		}
@@ -424,10 +398,7 @@ func (am *VelocimexAlertManager) sendAlertToChannels(alert *Alert, channelNames 
 		if channel, exists := am.channels[channelName]; exists {
 			go func(ch AlertChannel) {
 				if err := ch.Send(alert); err != nil {
-					am.logger.Error("Failed to send alert to channel", map[string]interface{}{
-						"channel": ch.Name(),
-						"error":   err.Error(),
-					})
+					am.logger.Error("alert", "Failed to send alert to channel")
 				}
 			}(channel)
 		}
@@ -463,15 +434,12 @@ func (am *VelocimexAlertManager) matchesFilters(alert *Alert, filters map[string
 func (am *VelocimexAlertManager) processEvents() {
 	for {
 		select {
-		case event, ok := <-am.eventChan:
+		case _, ok := <-am.eventChan:
 			if !ok {
 				return
 			}
 			
-			am.logger.Debug("Processing alert event", map[string]interface{}{
-				"event_type": event.Type,
-				"alert_id":   event.AlertID,
-			})
+		am.logger.Debug("alert", "Processing alert event")
 			
 		case <-am.ctx.Done():
 			return
