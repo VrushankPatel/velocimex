@@ -115,12 +115,46 @@ input:focus, select:focus {
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
 }
 
+/* Responsive grid classes */
+@media (min-width: 1024px) {
+  .lg\\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+  
+  .lg\\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  
+  .lg\\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Column span classes */
+@media (min-width: 1024px) {
+  .lg\\:col-span-1 {
+    grid-column: span 1 / span 1 !important;
+  }
+  
+  .lg\\:col-span-2 {
+    grid-column: span 2 / span 2 !important;
+  }
+  
+  .lg\\:col-span-3 {
+    grid-column: span 3 / span 3 !important;
+  }
+}
+
 .gap-4 {
   gap: 1rem !important;
 }
 
 .gap-6 {
   gap: 1.5rem !important;
+}
+
+.gap-8 {
+  gap: 2rem !important;
 }
 
 /* Flexbox */
@@ -321,6 +355,41 @@ input:focus, select:focus {
   border-color: #3b82f6 !important;
 }
 
+/* Main layout fixes */
+main {
+  display: flex !important;
+  flex: 1 !important;
+  overflow: hidden !important;
+}
+
+main > div {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 1.5rem !important;
+  padding: 1rem !important;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+@media (min-width: 1024px) {
+  main > div {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    padding: 1.5rem !important;
+  }
+}
+
+/* Card layout fixes */
+.card {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1) !important;
+  padding: 1.5rem !important;
+  margin-bottom: 1rem !important;
+  width: 100% !important;
+  min-height: 200px !important;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .grid-cols-4 {
@@ -329,5 +398,29 @@ input:focus, select:focus {
   
   .grid-cols-3 {
     grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+  
+  .lg\\:grid-cols-4 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+  
+  .lg\\:col-span-1,
+  .lg\\:col-span-2,
+  .lg\\:col-span-3 {
+    grid-column: span 1 / span 1 !important;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1023px) {
+  .lg\\:grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  
+  .lg\\:col-span-2 {
+    grid-column: span 2 / span 2 !important;
+  }
+  
+  .lg\\:col-span-1 {
+    grid-column: span 1 / span 1 !important;
   }
 }
