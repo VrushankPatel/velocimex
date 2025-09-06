@@ -18,6 +18,7 @@ import (
         "velocimex/internal/normalizer"
         "velocimex/internal/orderbook"
         "velocimex/internal/orders"
+        "velocimex/internal/plugins"
         "velocimex/internal/risk"
         "velocimex/internal/strategy"
 )
@@ -53,6 +54,12 @@ func main() {
                 log.Fatalf("Failed to configure backtesting engine: %v", err)
         }
         
+        // Initialize plugin manager
+        pluginManager := plugins.NewManager()
+        
+        // Register plugin loaders
+        pluginManager.RegisterLoader(".so", plugins.NewGoLoader())
+        
         // Setup market data feeds
         feedManager := feeds.NewManager(normalizer, cfg.Feeds)
         feedManager.SetOrderBookManager(orderBookManager)
@@ -74,7 +81,7 @@ func main() {
         router := http.NewServeMux()
         
         // Register API endpoints
-        api.RegisterRESTHandlers(router, orderBookManager, strategyEngine, orderManager, riskManager, backtestEngine)
+        api.RegisterRESTHandlers(router, orderBookManager, strategyEngine, orderManager, riskManager, backtestEngine, pluginManager)
         
         // Setup WebSocket server
         wsServer := api.NewWebSocketServer(orderBookManager, strategyEngine, orderManager, riskManager)
@@ -84,6 +91,11 @@ func main() {
         ctx := context.Background()
         if err := orderManager.Start(ctx); err != nil {
                 log.Fatalf("Failed to start order manager: %v", err)
+        }
+        
+        // Start plugin manager
+        if err := pluginManager.Start(); err != nil {
+                log.Fatalf("Failed to start plugin manager: %v", err)
         }
         
         // Start WebSocket server
@@ -130,6 +142,7 @@ func main() {
         orderManager.Stop(ctx)
         riskManager.Stop()
         backtestEngine.Stop()
+        pluginManager.Stop()
         feedManager.Disconnect()
         wsServer.Close()
         

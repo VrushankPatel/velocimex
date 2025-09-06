@@ -165,6 +165,23 @@ backtesting:
       min_spread: 0.001
       max_position_size: 10000.0
 
+plugins:
+  enabled: true
+  auto_start: false
+  hot_reload: true
+  sandboxed: true
+  timeout: 30s
+  memory_limit: 104857600
+  cpu_limit: 50.0
+  settings:
+    plugin_directory: "plugins"
+    max_plugins: 10
+    enable_logging: true
+  permissions:
+    - "read_market_data"
+    - "generate_signals"
+    - "access_orderbook"
+
 strategies:
   arbitrage:
     name: "Cross-Exchange Arbitrage"

@@ -13,12 +13,13 @@ import (
         "velocimex/internal/normalizer"
         "velocimex/internal/orderbook"
         "velocimex/internal/orders"
+        "velocimex/internal/plugins"
         "velocimex/internal/risk"
         "velocimex/internal/strategy"
 )
 
 // RegisterRESTHandlers registers REST API endpoints with the HTTP server
-func RegisterRESTHandlers(router *http.ServeMux, bookManager *orderbook.Manager, strategyEngine *strategy.Engine, orderManager orders.OrderManager, riskManager risk.RiskManager, backtestEngine backtesting.BacktestEngine) {
+func RegisterRESTHandlers(router *http.ServeMux, bookManager *orderbook.Manager, strategyEngine *strategy.Engine, orderManager orders.OrderManager, riskManager risk.RiskManager, backtestEngine backtesting.BacktestEngine, pluginManager plugins.PluginManager) {
         // API v1 base path
         const apiBase = "/api/v1"
 
@@ -91,6 +92,23 @@ func RegisterRESTHandlers(router *http.ServeMux, bookManager *orderbook.Manager,
         
         router.HandleFunc(apiBase+"/backtesting/config", func(w http.ResponseWriter, r *http.Request) {
                 handleBacktestConfig(w, r, backtestEngine)
+        })
+        
+        // Plugin management endpoints
+        router.HandleFunc(apiBase+"/plugins", func(w http.ResponseWriter, r *http.Request) {
+                handlePlugins(w, r, pluginManager)
+        })
+        
+        router.HandleFunc(apiBase+"/plugins/", func(w http.ResponseWriter, r *http.Request) {
+                handlePluginByID(w, r, pluginManager)
+        })
+        
+        router.HandleFunc(apiBase+"/plugins/discover", func(w http.ResponseWriter, r *http.Request) {
+                handlePluginDiscover(w, r, pluginManager)
+        })
+        
+        router.HandleFunc(apiBase+"/plugins/health", func(w http.ResponseWriter, r *http.Request) {
+                handlePluginHealth(w, r, pluginManager)
         })
 
         // System status endpoint
@@ -638,6 +656,179 @@ func handleBacktestConfig(w http.ResponseWriter, r *http.Request, backtestEngine
                 }
                 
                 writeJSON(w, map[string]string{"status": "success"})
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handlePlugins handles plugin management requests
+func handlePlugins(w http.ResponseWriter, r *http.Request, pluginManager plugins.PluginManager) {
+        switch r.Method {
+        case http.MethodGet:
+                pluginMap := pluginManager.GetAllPlugins()
+                pluginList := make([]*plugins.Plugin, 0, len(pluginMap))
+                
+                for _, plugin := range pluginMap {
+                        pluginList = append(pluginList, plugin)
+                }
+                
+                writeJSON(w, map[string]interface{}{
+                        "plugins": pluginList,
+                        "count":   len(pluginList),
+                })
+        case http.MethodPost:
+                // Load a new plugin
+                var request struct {
+                        Path string `json:"path"`
+                }
+                
+                if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+                        http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+                        return
+                }
+                
+                plugin, err := pluginManager.LoadPlugin(request.Path)
+                if err != nil {
+                        http.Error(w, fmt.Sprintf("Failed to load plugin: %v", err), http.StatusInternalServerError)
+                        return
+                }
+                
+                writeJSON(w, plugin)
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handlePluginByID handles individual plugin requests
+func handlePluginByID(w http.ResponseWriter, r *http.Request, pluginManager plugins.PluginManager) {
+        // Extract plugin ID from URL path
+        path := strings.TrimPrefix(r.URL.Path, "/api/v1/plugins/")
+        if path == "" {
+                http.Error(w, "Plugin ID required", http.StatusBadRequest)
+                return
+        }
+        
+        switch r.Method {
+        case http.MethodGet:
+                plugin, err := pluginManager.GetPlugin(path)
+                if err != nil {
+                        http.Error(w, fmt.Sprintf("Plugin not found: %v", err), http.StatusNotFound)
+                        return
+                }
+                
+                writeJSON(w, plugin)
+        case http.MethodPost:
+                // Start plugin
+                if err := pluginManager.StartPlugin(path); err != nil {
+                        http.Error(w, fmt.Sprintf("Failed to start plugin: %v", err), http.StatusInternalServerError)
+                        return
+                }
+                
+                writeJSON(w, map[string]string{"status": "started"})
+        case http.MethodDelete:
+                // Stop plugin
+                if err := pluginManager.StopPlugin(path); err != nil {
+                        http.Error(w, fmt.Sprintf("Failed to stop plugin: %v", err), http.StatusInternalServerError)
+                        return
+                }
+                
+                writeJSON(w, map[string]string{"status": "stopped"})
+        case http.MethodPut:
+                // Update plugin configuration
+                var config plugins.PluginConfig
+                if err := json.NewDecoder(r.Body).Decode(&config); err != nil {
+                        http.Error(w, fmt.Sprintf("Invalid config: %v", err), http.StatusBadRequest)
+                        return
+                }
+                
+                if err := pluginManager.UpdatePluginConfig(path, config); err != nil {
+                        http.Error(w, fmt.Sprintf("Failed to update config: %v", err), http.StatusInternalServerError)
+                        return
+                }
+                
+                writeJSON(w, map[string]string{"status": "updated"})
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handlePluginDiscover handles plugin discovery requests
+func handlePluginDiscover(w http.ResponseWriter, r *http.Request, pluginManager plugins.PluginManager) {
+        switch r.Method {
+        case http.MethodGet:
+                directory := r.URL.Query().Get("directory")
+                if directory == "" {
+                        directory = "plugins" // Default directory
+                }
+                
+                plugins, err := pluginManager.DiscoverPlugins(directory)
+                if err != nil {
+                        http.Error(w, fmt.Sprintf("Failed to discover plugins: %v", err), http.StatusInternalServerError)
+                        return
+                }
+                
+                writeJSON(w, map[string]interface{}{
+                        "plugins": plugins,
+                        "count":   len(plugins),
+                        "directory": directory,
+                })
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handlePluginHealth handles plugin health requests
+func handlePluginHealth(w http.ResponseWriter, r *http.Request, pluginManager plugins.PluginManager) {
+        switch r.Method {
+        case http.MethodGet:
+                pluginID := r.URL.Query().Get("plugin_id")
+                
+                if pluginID != "" {
+                        // Get health for specific plugin
+                        plugin, err := pluginManager.GetPlugin(pluginID)
+                        if err != nil {
+                                http.Error(w, fmt.Sprintf("Plugin not found: %v", err), http.StatusNotFound)
+                                return
+                        }
+                        
+                        health := &plugins.PluginHealth{
+                                PluginID:    plugin.Info.ID,
+                                Healthy:     plugin.State == plugins.PluginStateRunning,
+                                Status:      string(plugin.State),
+                                LastCheck:   time.Now(),
+                                Uptime:      time.Since(plugin.LoadTime),
+                                MemoryUsage: plugin.Metrics.MemoryUsage,
+                                CPUUsage:    plugin.Metrics.CPUUsage,
+                                ErrorCount:  plugin.Metrics.ErrorsCount,
+                                LastError:   plugin.Error,
+                        }
+                        
+                        writeJSON(w, health)
+                } else {
+                        // Get health for all plugins
+                        pluginMap := pluginManager.GetAllPlugins()
+                        healthMap := make(map[string]*plugins.PluginHealth)
+                        
+                        for _, plugin := range pluginMap {
+                                health := &plugins.PluginHealth{
+                                        PluginID:    plugin.Info.ID,
+                                        Healthy:     plugin.State == plugins.PluginStateRunning,
+                                        Status:      string(plugin.State),
+                                        LastCheck:   time.Now(),
+                                        Uptime:      time.Since(plugin.LoadTime),
+                                        MemoryUsage: plugin.Metrics.MemoryUsage,
+                                        CPUUsage:    plugin.Metrics.CPUUsage,
+                                        ErrorCount:  plugin.Metrics.ErrorsCount,
+                                        LastError:   plugin.Error,
+                                }
+                                healthMap[plugin.Info.ID] = health
+                        }
+                        
+                        writeJSON(w, map[string]interface{}{
+                                "plugins": healthMap,
+                                "count":   len(healthMap),
+                        })
+                }
         default:
                 http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
         }
