@@ -1,209 +1,389 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Velocimex - High Frequency Trading Platform</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.0/dist/tailwind.min.css" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <!-- Custom Styles -->
     <link href="styles/velocimex.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    
+    <!-- App Scripts -->
     <script type="module" src="js/velocimex.js"></script>
     <script type="module" src="js/app.js"></script>
 </head>
-<body class="bg-gray-100 text-gray-900">
+<body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
     <div class="min-h-screen flex flex-col">
-        <header class="bg-indigo-600 text-white shadow-md">
-            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-                <h1 class="text-2xl font-bold">Velocimex</h1>
-                <div class="flex items-center space-x-4">
-                    <div id="connection-status" class="flex items-center">
-                        <span class="w-3 h-3 bg-gray-400 rounded-full mr-2"></span>
-                        <span>Disconnected</span>
+        <!-- Header -->
+        <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm">
+            <div class="px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <!-- Logo and Title -->
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                                <i data-lucide="zap" class="w-5 h-5 text-white"></i>
+                            </div>
+                            <h1 class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                                Velocimex
+                            </h1>
+                        </div>
+                        <div class="hidden md:flex items-center space-x-1 text-sm text-slate-500 dark:text-slate-400">
+                            <span>HFT Platform</span>
+                            <span>•</span>
+                            <span id="version">v1.0.0</span>
+                        </div>
                     </div>
-                    <button id="settings-button" class="px-3 py-1 bg-indigo-700 rounded hover:bg-indigo-800 transition-colors">
-                        Settings
-                    </button>
+
+                    <!-- Status and Controls -->
+                    <div class="flex items-center space-x-4">
+                        <!-- Connection Status -->
+                        <div class="flex items-center space-x-2">
+                            <div id="connection-indicator" class="w-2 h-2 rounded-full bg-slate-400"></div>
+                            <span id="connection-status" class="text-sm font-medium">Disconnected</span>
+                        </div>
+
+                        <!-- Theme Toggle -->
+                        <button id="theme-toggle" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                            <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                            <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+                        </button>
+
+                        <!-- Settings -->
+                        <button id="settings-button" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                            <i data-lucide="settings" class="w-5 h-5"></i>
+                        </button>
+
+                        <!-- Notifications -->
+                        <div class="relative">
+                            <button id="notifications-button" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                <i data-lucide="bell" class="w-5 h-5"></i>
+                                <span id="notification-badge" class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center hidden">0</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </header>
 
-        <main class="flex-grow container mx-auto px-4 py-6">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Market Overview -->
-                <div class="bg-white rounded-lg shadow-md p-4 col-span-1">
-                    <h2 class="text-xl font-semibold mb-4">Market Overview</h2>
-                    <div id="market-list" class="space-y-2">
-                        <div class="animate-pulse">
-                            <div class="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
-                            <div class="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
-                            <div class="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Order Book -->
-                <div class="bg-white rounded-lg shadow-md p-4 col-span-1">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-semibold">Order Book</h2>
-                        <select id="orderbook-symbol" class="border rounded px-2 py-1 text-sm">
-                            <option value="BTCUSDT">BTC/USDT</option>
-                            <option value="ETHUSDT">ETH/USDT</option>
-                            <option value="SOLUSDT">SOL/USDT</option>
-                            <option value="BNBUSDT">BNB/USDT</option>
-                            <option value="ADAUSDT">ADA/USDT</option>
-                            <option value="AAPL">AAPL (NASDAQ)</option>
-                            <option value="MSFT">MSFT (NASDAQ)</option>
-                            <option value="GOOGL">GOOGL (NASDAQ)</option>
-                            <option value="TSLA">TSLA (NASDAQ)</option>
-                            <option value="AMZN">AMZN (NASDAQ)</option>
-                            <option value="JPM">JPM (NYSE)</option>
-                            <option value="BAC">BAC (NYSE)</option>
-                            <option value="RELIANCE">RELIANCE (NSE)</option>
-                            <option value="TCS">TCS (NSE)</option>
-                            <option value="SPY">SPY (S&P500)</option>
-                            <option value="DIA">DIA (Dow Jones)</option>
-                        </select>
-                    </div>
-                    <div class="text-center mb-2">
-                        <span id="orderbook-spread" class="spread">Spread: 0.00 (0.00%)</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <div class="orderbook-header orderbook-row">
-                                <div>Price</div>
-                                <div>Size</div>
-                                <div>Total</div>
-                            </div>
-                            <div id="asks-container" class="relative overflow-hidden">
-                                <div class="animate-pulse">
-                                    <div class="h-4 bg-gray-200 rounded w-full mb-2"></div>
-                                    <div class="h-4 bg-gray-200 rounded w-full mb-2"></div>
-                                    <div class="h-4 bg-gray-200 rounded w-full mb-2"></div>
-                                </div>
+        <!-- Main Content -->
+        <main class="flex-1 overflow-hidden">
+            <div class="h-full grid grid-cols-1 lg:grid-cols-4 gap-6 p-4 sm:p-6">
+                <!-- Left Sidebar - Market Overview -->
+                <div class="lg:col-span-1 space-y-6">
+                    <!-- Market Overview Card -->
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-lg font-semibold">Market Overview</h2>
+                                <button id="refresh-markets" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                </button>
                             </div>
                         </div>
-                        <div>
-                            <div class="orderbook-header orderbook-row">
-                                <div>Price</div>
-                                <div>Size</div>
-                                <div>Total</div>
-                            </div>
-                            <div id="bids-container" class="relative overflow-hidden">
-                                <div class="animate-pulse">
-                                    <div class="h-4 bg-gray-200 rounded w-full mb-2"></div>
-                                    <div class="h-4 bg-gray-200 rounded w-full mb-2"></div>
-                                    <div class="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                        <div class="p-6">
+                            <div id="market-list" class="space-y-3">
+                                <!-- Loading skeleton -->
+                                <div class="animate-pulse space-y-3">
+                                    <div class="h-16 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+                                    <div class="h-16 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+                                    <div class="h-16 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Arbitrage Opportunities -->
-                <div class="bg-white rounded-lg shadow-md p-4 col-span-1">
-                    <h2 class="text-xl font-semibold mb-4">Arbitrage Opportunities</h2>
-                    <div id="arbitrage-list" class="space-y-3">
-                        <div class="animate-pulse">
-                            <div class="h-20 bg-gray-200 rounded w-full mb-2"></div>
-                            <div class="h-20 bg-gray-200 rounded w-full mb-2"></div>
+                    <!-- Quick Stats -->
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+                            <h2 class="text-lg font-semibold">Quick Stats</h2>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-slate-600 dark:text-slate-400">Active Strategies</span>
+                                <span id="active-strategies" class="font-semibold text-green-600 dark:text-green-400">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-slate-600 dark:text-slate-400">Total P&L</span>
+                                <span id="total-pnl" class="font-semibold text-slate-900 dark:text-slate-100">$0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-slate-600 dark:text-slate-400">Win Rate</span>
+                                <span id="win-rate" class="font-semibold text-slate-900 dark:text-slate-100">0%</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-slate-600 dark:text-slate-400">Trades Today</span>
+                                <span id="trades-today" class="font-semibold text-slate-900 dark:text-slate-100">0</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Strategy Performance -->
-                <div class="bg-white rounded-lg shadow-md p-4 col-span-2">
-                    <h2 class="text-xl font-semibold mb-4">Strategy Performance</h2>
-                    
-                    <!-- Performance Stats -->
-                    <div class="performance-stats mb-4">
-                        <div class="stat-card">
-                            <div class="label">P/L (24h)</div>
-                            <div class="value" id="profit-loss">$0.00</div>
+                <!-- Center Content -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Order Book -->
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-lg font-semibold">Order Book</h2>
+                                <div class="flex items-center space-x-3">
+                                    <select id="orderbook-symbol" class="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        <option value="BTCUSDT">BTC/USDT</option>
+                                        <option value="ETHUSDT">ETH/USDT</option>
+                                        <option value="SOLUSDT">SOL/USDT</option>
+                                        <option value="BNBUSDT">BNB/USDT</option>
+                                        <option value="ADAUSDT">ADA/USDT</option>
+                                        <option value="AAPL">AAPL (NASDAQ)</option>
+                                        <option value="MSFT">MSFT (NASDAQ)</option>
+                                        <option value="GOOGL">GOOGL (NASDAQ)</option>
+                                        <option value="TSLA">TSLA (NASDAQ)</option>
+                                        <option value="AMZN">AMZN (NASDAQ)</option>
+                                        <option value="JPM">JPM (NYSE)</option>
+                                        <option value="BAC">BAC (NYSE)</option>
+                                        <option value="RELIANCE">RELIANCE (NSE)</option>
+                                        <option value="TCS">TCS (NSE)</option>
+                                        <option value="SPY">SPY (S&P500)</option>
+                                        <option value="DIA">DIA (Dow Jones)</option>
+                                    </select>
+                                    <button id="orderbook-settings" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                        <i data-lucide="more-horizontal" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <div class="label">Max Drawdown</div>
-                            <div class="value" id="max-drawdown">0.00%</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="label">Win Rate</div>
-                            <div class="value" id="win-rate">0.00%</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="label">Trades</div>
-                            <div class="value" id="trade-count">0</div>
+                        <div class="p-6">
+                            <!-- Spread Display -->
+                            <div class="text-center mb-4">
+                                <div class="inline-flex items-center space-x-2 px-3 py-1 bg-slate-100 dark:bg-slate-700 rounded-full">
+                                    <span class="text-sm text-slate-600 dark:text-slate-400">Spread:</span>
+                                    <span id="orderbook-spread" class="font-semibold text-slate-900 dark:text-slate-100">0.00 (0.00%)</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Order Book Grid -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <!-- Asks -->
+                                <div>
+                                    <div class="text-xs font-medium text-red-600 dark:text-red-400 mb-2 px-2">SELL ORDERS</div>
+                                    <div class="orderbook-header text-xs font-medium text-slate-500 dark:text-slate-400 grid grid-cols-3 gap-2 px-2 py-1">
+                                        <div>Price</div>
+                                        <div>Size</div>
+                                        <div>Total</div>
+                                    </div>
+                                    <div id="asks-container" class="space-y-0.5">
+                                        <!-- Loading skeleton -->
+                                        <div class="animate-pulse space-y-1">
+                                            <div class="h-6 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                            <div class="h-6 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                            <div class="h-6 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Bids -->
+                                <div>
+                                    <div class="text-xs font-medium text-green-600 dark:text-green-400 mb-2 px-2">BUY ORDERS</div>
+                                    <div class="orderbook-header text-xs font-medium text-slate-500 dark:text-slate-400 grid grid-cols-3 gap-2 px-2 py-1">
+                                        <div>Price</div>
+                                        <div>Size</div>
+                                        <div>Total</div>
+                                    </div>
+                                    <div id="bids-container" class="space-y-0.5">
+                                        <!-- Loading skeleton -->
+                                        <div class="animate-pulse space-y-1">
+                                            <div class="h-6 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                            <div class="h-6 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                            <div class="h-6 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Chart -->
-                    <div class="strategy-performance">
-                        <canvas id="performance-chart"></canvas>
+                    <!-- Performance Chart -->
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-lg font-semibold">Performance</h2>
+                                <div class="flex items-center space-x-2">
+                                    <select id="chart-timeframe" class="px-3 py-1.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm">
+                                        <option value="1h">1H</option>
+                                        <option value="4h">4H</option>
+                                        <option value="1d" selected>1D</option>
+                                        <option value="1w">1W</option>
+                                    </select>
+                                    <button id="chart-fullscreen" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                        <i data-lucide="maximize" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="h-80">
+                                <canvas id="performance-chart"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Recent Signals -->
-                <div class="bg-white rounded-lg shadow-md p-4">
-                    <h2 class="text-xl font-semibold mb-4">Recent Signals</h2>
-                    <div id="signals-list" class="strategy-signals">
-                        <div class="animate-pulse">
-                            <div class="h-16 bg-gray-200 rounded mb-2"></div>
-                            <div class="h-16 bg-gray-200 rounded mb-2"></div>
-                            <div class="h-16 bg-gray-200 rounded"></div>
+                <!-- Right Sidebar -->
+                <div class="lg:col-span-1 space-y-6">
+                    <!-- Arbitrage Opportunities -->
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-lg font-semibold">Arbitrage</h2>
+                                <span id="arbitrage-count" class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-medium rounded-full">0</span>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div id="arbitrage-list" class="space-y-3">
+                                <!-- Loading skeleton -->
+                                <div class="animate-pulse space-y-3">
+                                    <div class="h-20 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+                                    <div class="h-20 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Signals -->
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-lg font-semibold">Recent Signals</h2>
+                                <button id="clear-signals" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div id="signals-list" class="space-y-3">
+                                <!-- Loading skeleton -->
+                                <div class="animate-pulse space-y-3">
+                                    <div class="h-16 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+                                    <div class="h-16 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Risk Metrics -->
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+                            <h2 class="text-lg font-semibold">Risk Metrics</h2>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-slate-600 dark:text-slate-400">Max Drawdown</span>
+                                <span id="max-drawdown" class="font-semibold text-red-600 dark:text-red-400">0.00%</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-slate-600 dark:text-slate-400">Sharpe Ratio</span>
+                                <span id="sharpe-ratio" class="font-semibold text-slate-900 dark:text-slate-100">0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-slate-600 dark:text-slate-400">VaR (95%)</span>
+                                <span id="var-95" class="font-semibold text-slate-900 dark:text-slate-100">$0.00</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </main>
-
-        <footer class="bg-gray-800 text-white py-4">
-            <div class="container mx-auto px-4 text-center">
-                <p>Velocimex HFT Platform &copy; 2025</p>
-            </div>
-        </footer>
     </div>
 
-    <!-- Settings Modal (Hidden by default) -->
-    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-        <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold">Settings</h2>
-                <button id="close-settings" class="text-gray-500 hover:text-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            <form id="settings-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Display Depth</label>
-                    <select id="display-depth" class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:text-white">
-                        <option value="5">5 Levels</option>
-                        <option value="10" selected>10 Levels</option>
-                        <option value="15">15 Levels</option>
-                        <option value="20">20 Levels</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Update Interval</label>
-                    <select id="update-interval" class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:text-white">
-                        <option value="500">Fast (500ms)</option>
-                        <option value="1000" selected>Normal (1000ms)</option>
-                        <option value="2000">Slow (2000ms)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Theme</label>
-                    <select id="theme-selector" class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:text-white">
-                        <option value="light" selected>Light</option>
-                        <option value="dark">Dark</option>
-                    </select>
-                </div>
-                <div class="pt-2">
-                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">
-                        Save Settings
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-md w-full mx-4">
+            <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold">Settings</h2>
+                    <button id="close-settings" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
                 </div>
-            </form>
+            </div>
+            <div class="p-6">
+                <form id="settings-form" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Display Depth</label>
+                        <select id="display-depth" class="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="5">5 Levels</option>
+                            <option value="10" selected>10 Levels</option>
+                            <option value="15">15 Levels</option>
+                            <option value="20">20 Levels</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Update Interval</label>
+                        <select id="update-interval" class="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="100">Ultra Fast (100ms)</option>
+                            <option value="500">Fast (500ms)</option>
+                            <option value="1000" selected>Normal (1000ms)</option>
+                            <option value="2000">Slow (2000ms)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Chart Type</label>
+                        <select id="chart-type" class="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="line" selected>Line Chart</option>
+                            <option value="candlestick">Candlestick</option>
+                            <option value="area">Area Chart</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Dark Mode</span>
+                        <button type="button" id="theme-toggle-modal" class="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 dark:bg-slate-700 transition-colors">
+                            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1 dark:translate-x-6"></span>
+                        </button>
+                    </div>
+                    <div class="pt-4">
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors">
+                            Save Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
+
+    <!-- Notifications Panel -->
+    <div id="notifications-panel" class="fixed top-16 right-4 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-40 hidden">
+        <div class="p-4 border-b border-slate-200 dark:border-slate-700">
+            <div class="flex items-center justify-between">
+                <h3 class="font-semibold">Notifications</h3>
+                <button id="clear-notifications" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                    Clear All
+                </button>
+            </div>
+        </div>
+        <div class="p-4">
+            <div id="notifications-list" class="space-y-3">
+                <div class="text-center text-slate-500 dark:text-slate-400 text-sm py-4">
+                    No notifications
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
 </body>
 </html>

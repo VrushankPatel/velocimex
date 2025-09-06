@@ -1,7 +1,7 @@
-// Velocimex Module
+// Enhanced Velocimex Web UI Application
 import { WebSocketClient } from '../lib/websocket.js';
 
-// Utility function for debouncing
+// Utility functions
 function debounce(func, wait) {
     let timeout;
     return function(...args) {
@@ -10,29 +10,292 @@ function debounce(func, wait) {
     };
 }
 
+function throttle(func, limit) {
+    let inThrottle;
+    return function(...args) {
+        if (!inThrottle) {
+            func.apply(this, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    };
+}
+
+// Toast notification system
+class ToastManager {
+    constructor() {
+        this.container = document.getElementById('toast-container');
+    }
+
+    show(message, type = 'info', duration = 5000) {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type} fade-in`;
+        toast.innerHTML = `
+            <div class="flex items-center">
+                <i data-lucide="${this.getIcon(type)}" class="w-5 h-5 mr-2"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        this.container.appendChild(toast);
+        lucide.createIcons();
+        
+        setTimeout(() => {
+            toast.style.animation = 'slideIn 0.3s ease-out reverse';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    getIcon(type) {
+        const icons = {
+            success: 'check-circle',
+            error: 'x-circle',
+            warning: 'alert-triangle',
+            info: 'info'
+        };
+        return icons[type] || 'info';
+    }
+}
+
+// Notification system
+class NotificationManager {
+    constructor() {
+        this.panel = document.getElementById('notifications-panel');
+        this.list = document.getElementById('notifications-list');
+        this.badge = document.getElementById('notification-badge');
+        this.notifications = [];
+        this.maxNotifications = 50;
+    }
+
+    add(title, message, type = 'info', timestamp = new Date()) {
+        const notification = {
+            id: Date.now() + Math.random(),
+            title,
+            message,
+            type,
+            timestamp,
+            read: false
+        };
+
+        this.notifications.unshift(notification);
+        
+        // Limit notifications
+        if (this.notifications.length > this.maxNotifications) {
+            this.notifications = this.notifications.slice(0, this.maxNotifications);
+        }
+
+        this.updateUI();
+        this.updateBadge();
+    }
+
+    updateUI() {
+        if (this.notifications.length === 0) {
+            this.list.innerHTML = `
+                <div class="text-center text-slate-500 dark:text-slate-400 text-sm py-4">
+                    No notifications
+                </div>
+            `;
+            return;
+        }
+
+        this.list.innerHTML = this.notifications.map(notification => `
+            <div class="notification-item ${notification.read ? 'opacity-60' : ''}" data-id="${notification.id}">
+                <i data-lucide="${this.getIcon(notification.type)}" class="notification-icon"></i>
+                <div class="notification-content">
+                    <div class="notification-title">${notification.title}</div>
+                    <div class="notification-message">${notification.message}</div>
+                    <div class="notification-time">${this.formatTime(notification.timestamp)}</div>
+                </div>
+            </div>
+        `).join('');
+
+        lucide.createIcons();
+    }
+
+    getIcon(type) {
+        const icons = {
+            success: 'check-circle',
+            error: 'x-circle',
+            warning: 'alert-triangle',
+            info: 'info',
+            trade: 'trending-up',
+            arbitrage: 'zap'
+        };
+        return icons[type] || 'info';
+    }
+
+    formatTime(timestamp) {
+        const now = new Date();
+        const diff = now - timestamp;
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days = Math.floor(diff / 86400000);
+
+        if (minutes < 1) return 'Just now';
+        if (minutes < 60) return `${minutes}m ago`;
+        if (hours < 24) return `${hours}h ago`;
+        return `${days}d ago`;
+    }
+
+    updateBadge() {
+        const unreadCount = this.notifications.filter(n => !n.read).length;
+        if (unreadCount > 0) {
+            this.badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+            this.badge.classList.remove('hidden');
+        } else {
+            this.badge.classList.add('hidden');
+        }
+    }
+
+    clear() {
+        this.notifications = [];
+        this.updateUI();
+        this.updateBadge();
+    }
+
+    markAllRead() {
+        this.notifications.forEach(n => n.read = true);
+        this.updateUI();
+        this.updateBadge();
+    }
+}
+
+// Chart manager for performance visualization
+class ChartManager {
+    constructor() {
+        this.chart = null;
+        this.data = {
+            labels: [],
+            datasets: [{
+                label: 'P&L',
+                data: [],
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        };
+        this.init();
+    }
+
+    init() {
+        const ctx = document.getElementById('performance-chart').getContext('2d');
+        this.chart = new Chart(ctx, {
+            type: 'line',
+            data: this.data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: 'white',
+                        bodyColor: 'white',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'minute',
+                            displayFormats: {
+                                minute: 'HH:mm'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(148, 163, 184, 0.1)'
+                        },
+                        ticks: {
+                            color: 'rgb(148, 163, 184)'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(148, 163, 184, 0.1)'
+                        },
+                        ticks: {
+                            color: 'rgb(148, 163, 184)',
+                            callback: function(value) {
+                                return '$' + value.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                },
+                elements: {
+                    point: {
+                        radius: 0,
+                        hoverRadius: 6
+                    }
+                }
+            }
+        });
+    }
+
+    updateData(newData) {
+        this.data.labels = newData.labels;
+        this.data.datasets[0].data = newData.values;
+        this.chart.update('none');
+    }
+
+    addDataPoint(timestamp, value) {
+        this.data.labels.push(timestamp);
+        this.data.datasets[0].data.push(value);
+        
+        // Keep only last 100 points
+        if (this.data.labels.length > 100) {
+            this.data.labels.shift();
+            this.data.datasets[0].data.shift();
+        }
+        
+        this.chart.update('none');
+    }
+}
+
+// Enhanced VelocimexApp class
 export class VelocimexApp {
     constructor() {
         this.ws = null;
         this.eventHandlers = new Map();
-        this.connectionStatusEl = document.getElementById('connection-status');
+        this.toastManager = new ToastManager();
+        this.notificationManager = new NotificationManager();
+        this.chartManager = new ChartManager();
         
-        // Initialize UI elements
+        // UI elements
+        this.connectionStatusEl = document.getElementById('connection-status');
+        this.connectionIndicator = document.getElementById('connection-indicator');
         this.marketList = document.getElementById('market-list');
         this.arbitrageList = document.getElementById('arbitrage-list');
         this.asksContainer = document.getElementById('asks-container');
         this.bidsContainer = document.getElementById('bids-container');
         this.orderbookSpread = document.getElementById('orderbook-spread');
         this.marketSelect = document.getElementById('orderbook-symbol');
-
-        // Initialize settings
+        this.signalsList = document.getElementById('signals-list');
+        
+        // Settings
         this.settings = {
             displayDepth: 10,
             updateInterval: 1000,
-            theme: 'light'
+            theme: localStorage.getItem('theme') || 'light',
+            chartType: 'line'
         };
 
         this.currentMarket = null;
         this.lastOrderbookData = null;
+        this.marketData = new Map();
+        this.arbitrageData = [];
+        this.signals = [];
 
         this.init();
     }
