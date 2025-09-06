@@ -9,19 +9,21 @@ import (
 
         "github.com/gorilla/websocket"
         "velocimex/internal/orderbook"
+        "velocimex/internal/orders"
         "velocimex/internal/strategy"
 )
 
 // WebSocketServer handles WebSocket connections for the API
 type WebSocketServer struct {
-        orderBooks *orderbook.Manager
-        strategies *strategy.Engine
-        clients    map[*Client]bool
-        broadcast  chan []byte
-        register   chan *Client
-        unregister chan *Client
-        mu         sync.Mutex
-        upgrader   websocket.Upgrader
+        orderBooks    *orderbook.Manager
+        strategies    *strategy.Engine
+        orderManager  orders.OrderManager
+        clients       map[*Client]bool
+        broadcast     chan []byte
+        register      chan *Client
+        unregister    chan *Client
+        mu            sync.Mutex
+        upgrader      websocket.Upgrader
 }
 
 // Client represents a connected WebSocket client
@@ -35,14 +37,15 @@ type Client struct {
 }
 
 // NewWebSocketServer creates a new WebSocket server
-func NewWebSocketServer(books *orderbook.Manager, strategies *strategy.Engine) *WebSocketServer {
+func NewWebSocketServer(books *orderbook.Manager, strategies *strategy.Engine, orderManager orders.OrderManager) *WebSocketServer {
         return &WebSocketServer{
-                orderBooks: books,
-                strategies: strategies,
-                clients:    make(map[*Client]bool),
-                broadcast:  make(chan []byte, 256),
-                register:   make(chan *Client),
-                unregister: make(chan *Client),
+                orderBooks:   books,
+                strategies:   strategies,
+                orderManager: orderManager,
+                clients:      make(map[*Client]bool),
+                broadcast:    make(chan []byte, 256),
+                register:     make(chan *Client),
+                unregister:   make(chan *Client),
                 upgrader: websocket.Upgrader{
                         ReadBufferSize:  1024,
                         WriteBufferSize: 1024,

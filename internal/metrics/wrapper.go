@@ -165,6 +165,20 @@ func (w *Wrapper) RecordFeedConnection(feedName, status string) {
 	}
 }
 
+// RecordPositionValue records position value if metrics are enabled
+func (w *Wrapper) RecordPositionValue(value float64) {
+	if w.enabled {
+		w.metrics.RecordPositionValue(value)
+	}
+}
+
+// RecordPositionPNL records position PNL if metrics are enabled
+func (w *Wrapper) RecordPositionPNL(pnl float64) {
+	if w.enabled {
+		w.metrics.RecordPositionPNL(pnl)
+	}
+}
+
 // UpdateUptime updates uptime metric if metrics are enabled
 func (w *Wrapper) UpdateUptime() {
 	if w.enabled {

@@ -2,9 +2,9 @@ package orders
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"log"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -189,7 +189,8 @@ func (m *Manager) SubmitOrder(ctx context.Context, req *OrderRequest) (*Order, e
 	// Record metrics
 	if m.metrics != nil {
 		m.metrics.RecordOrderEvent("order_submitted", "info")
-		m.metrics.RecordOrderValue(order.Quantity.Mul(order.Price))
+		orderValue, _ := order.Quantity.Mul(order.Price).Float64()
+		m.metrics.RecordOrderValue(orderValue)
 	}
 
 	return order, nil
@@ -444,8 +445,10 @@ func (m *Manager) processUpdate(update *OrderUpdate) {
 
 	if m.metrics != nil {
 		m.metrics.RecordOrderEvent("order_updated", string(update.Status))
-		m.metrics.RecordOrderFilled(update.FilledQty)
-		m.metrics.RecordOrderValue(update.FilledQty.Mul(update.FilledPrice))
+		filledQty, _ := update.FilledQty.Float64()
+		m.metrics.RecordOrderFilled(filledQty)
+		filledValue, _ := update.FilledQty.Mul(update.FilledPrice).Float64()
+		m.metrics.RecordOrderValue(filledValue)
 	}
 }
 
@@ -484,7 +487,7 @@ func (m *Manager) updatePositions() {
 	}
 
 	if m.metrics != nil {
-		m.metrics.RecordPositionCount(len(m.positions))
+		m.metrics.RecordPositionCount(float64(len(m.positions)))
 	}
 }
 
@@ -546,8 +549,10 @@ func (m *Manager) updatePositionFromExecution(execution *Execution) {
 	}
 
 	if m.metrics != nil {
-		m.metrics.RecordPositionValue(position.Quantity.Mul(position.EntryPrice))
-		m.metrics.RecordPositionPNL(position.RealizedPNL)
+		positionValue, _ := position.Quantity.Mul(position.EntryPrice).Float64()
+		m.metrics.RecordPositionValue(positionValue)
+		realizedPNL, _ := position.RealizedPNL.Float64()
+		m.metrics.RecordPositionPNL(realizedPNL)
 	}
 }
 
@@ -597,6 +602,7 @@ func (m *Manager) cleanupExpiredOrders() {
 				order.Status = OrderStatusExpired
 				order.UpdatedAt = now
 
+				log.Printf("Order %s expired", orderID)
 				if m.metrics != nil {
 					m.metrics.RecordOrderEvent("order_expired", "info")
 				}
@@ -706,15 +712,4 @@ func (m *Manager) GetStatistics() map[string]interface{} {
 	}
 
 	return stats
-}
-
-// rand is used for paper trading simulation
-var rand = &cryptoReader{}
-
-type cryptoReader struct{}
-
-func (c *cryptoReader) Float64() float64 {
-	var b [8]byte
-	rand.Read(b[:])
-	return float64(uint64(b[0])|uint64(b[1])<<8|uint64(b[2])<<16|uint64(b[3])<<24) / float64(^uint32(0))
 }

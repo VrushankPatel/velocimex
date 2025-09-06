@@ -1,6 +1,7 @@
 package main
 
 import (
+        "context"
         "flag"
 	"fmt"
         "log"
@@ -15,6 +16,7 @@ import (
         "velocimex/internal/feeds"
         "velocimex/internal/normalizer"
         "velocimex/internal/orderbook"
+        "velocimex/internal/orders"
         "velocimex/internal/strategy"
 )
 
@@ -33,6 +35,10 @@ func main() {
         normalizer := normalizer.New()
         orderBookManager := orderbook.NewManager()
         
+        // Initialize order management system
+        smartRouter := orders.NewSmartRouter(orders.DefaultSmartRouterConfig(), orderBookManager)
+        orderManager := orders.NewManager(orders.DefaultManagerConfig(), smartRouter, nil)
+        
         // Setup market data feeds
         feedManager := feeds.NewManager(normalizer, cfg.Feeds)
         feedManager.SetOrderBookManager(orderBookManager)
@@ -48,11 +54,17 @@ func main() {
         router := http.NewServeMux()
         
         // Register API endpoints
-        api.RegisterRESTHandlers(router, orderBookManager, strategyEngine)
+        api.RegisterRESTHandlers(router, orderBookManager, strategyEngine, orderManager)
         
         // Setup WebSocket server
-        wsServer := api.NewWebSocketServer(orderBookManager, strategyEngine)
+        wsServer := api.NewWebSocketServer(orderBookManager, strategyEngine, orderManager)
         router.Handle("/ws", wsServer)
+        
+        // Start order manager
+        ctx := context.Background()
+        if err := orderManager.Start(ctx); err != nil {
+                log.Fatalf("Failed to start order manager: %v", err)
+        }
         
         // Start WebSocket server
         go wsServer.Run()
@@ -95,6 +107,7 @@ func main() {
         log.Printf("Received signal %v, shutting down...", sig)
         
         // Graceful shutdown
+        orderManager.Stop(ctx)
         feedManager.Disconnect()
         wsServer.Close()
         

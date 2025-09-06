@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"velocimex/internal/normalizer"
 	"velocimex/internal/orderbook"
 )
 
@@ -284,8 +285,8 @@ func (sr *SmartRouterImpl) calculatePriceImpact(order *OrderRequest, marketData 
 			break
 		}
 
-		levelVolume := decimal.Min(remainingQty, level.Volume)
-		totalCost = totalCost.Add(level.Price.Mul(levelVolume))
+		levelVolume := decimal.Min(remainingQty, decimal.NewFromFloat(level.Volume))
+		totalCost = totalCost.Add(decimal.NewFromFloat(level.Price).Mul(levelVolume))
 		volume = volume.Add(levelVolume)
 		remainingQty = remainingQty.Sub(levelVolume)
 	}
@@ -312,6 +313,7 @@ func (sr *SmartRouterImpl) calculatePriceScore(order *OrderRequest, marketData *
 
 	// Score based on how close the price is to the best available
 	// This is a simplified scoring - in reality, you'd compare against other exchanges
+	_ = price // Use price in future implementation
 	return 1.0 // For now, return perfect score
 }
 

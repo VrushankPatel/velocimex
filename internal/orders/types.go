@@ -134,21 +134,24 @@ type OrderRequest struct {
 	StopPrice   decimal.Decimal        `json:"stop_price,omitempty"`
 	TimeInForce TimeInForce            `json:"time_in_force,omitempty"`
 	ExpiresAt   *time.Time             `json:"expires_at,omitempty"`
-	StrategyID  string                 `json:"strategy_id,omitempty"`
-	Tags        map[string]string      `json:"tags,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	StrategyID   string                 `json:"strategy_id,omitempty"`
+	StrategyName string                 `json:"strategy_name,omitempty"`
+	Tags         map[string]string      `json:"tags,omitempty"`
+	Metadata     map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // RoutingDecision represents a routing decision made by the smart router
 type RoutingDecision struct {
-	OrderID      string            `json:"order_id"`
-	Exchange     string            `json:"exchange"`
-	Route        string            `json:"route"`
-	Reason       string            `json:"reason"`
+	OrderID         string            `json:"order_id"`
+	Exchange        string            `json:"exchange"`
+	Symbol          string            `json:"symbol"`
+	Side            OrderSide         `json:"side"`
+	Route           string            `json:"route"`
+	Reason          string            `json:"reason"`
 	ExpectedSlippage decimal.Decimal `json:"expected_slippage"`
-	ExpectedFee    decimal.Decimal `json:"expected_fee"`
-	Confidence     float64         `json:"confidence"`
-	Timestamp      time.Time       `json:"timestamp"`
+	ExpectedFee     decimal.Decimal  `json:"expected_fee"`
+	Confidence      float64          `json:"confidence"`
+	Timestamp       time.Time        `json:"timestamp"`
 }
 
 // SmartRouter defines the interface for smart order routing

@@ -11,11 +11,12 @@ import (
 
         "velocimex/internal/normalizer"
         "velocimex/internal/orderbook"
+        "velocimex/internal/orders"
         "velocimex/internal/strategy"
 )
 
 // RegisterRESTHandlers registers REST API endpoints with the HTTP server
-func RegisterRESTHandlers(router *http.ServeMux, bookManager *orderbook.Manager, strategyEngine *strategy.Engine) {
+func RegisterRESTHandlers(router *http.ServeMux, bookManager *orderbook.Manager, strategyEngine *strategy.Engine, orderManager orders.OrderManager) {
         // API v1 base path
         const apiBase = "/api/v1"
 
@@ -37,6 +38,23 @@ func RegisterRESTHandlers(router *http.ServeMux, bookManager *orderbook.Manager,
         // Market summary endpoint
         router.HandleFunc(apiBase+"/markets", func(w http.ResponseWriter, r *http.Request) {
                 handleMarkets(w, r, bookManager)
+        })
+
+        // Order management endpoints
+        router.HandleFunc(apiBase+"/orders", func(w http.ResponseWriter, r *http.Request) {
+                handleOrders(w, r, orderManager)
+        })
+        
+        router.HandleFunc(apiBase+"/orders/", func(w http.ResponseWriter, r *http.Request) {
+                handleOrderByID(w, r, orderManager)
+        })
+        
+        router.HandleFunc(apiBase+"/positions", func(w http.ResponseWriter, r *http.Request) {
+                handlePositions(w, r, orderManager)
+        })
+        
+        router.HandleFunc(apiBase+"/executions", func(w http.ResponseWriter, r *http.Request) {
+                handleExecutions(w, r, orderManager)
         })
 
         // System status endpoint
@@ -257,6 +275,150 @@ func handleSystemStatus(w http.ResponseWriter, r *http.Request) {
 
                 writeJSON(w, status)
 
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handleOrders handles order management requests
+func handleOrders(w http.ResponseWriter, r *http.Request, orderManager orders.OrderManager) {
+        switch r.Method {
+        case http.MethodGet:
+                // Get all orders with optional filters
+                filters := make(map[string]interface{})
+                if status := r.URL.Query().Get("status"); status != "" {
+                        filters["status"] = status
+                }
+                if exchange := r.URL.Query().Get("exchange"); exchange != "" {
+                        filters["exchange"] = exchange
+                }
+                if symbol := r.URL.Query().Get("symbol"); symbol != "" {
+                        filters["symbol"] = symbol
+                }
+                
+                orders, err := orderManager.GetOrders(r.Context(), filters)
+                if err != nil {
+                        http.Error(w, fmt.Sprintf("Failed to get orders: %v", err), http.StatusInternalServerError)
+                        return
+                }
+                
+                writeJSON(w, map[string]interface{}{
+                        "orders": orders,
+                        "count":  len(orders),
+                })
+                
+        case http.MethodPost:
+                // Submit new order
+                var req orders.OrderRequest
+                if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+                        http.Error(w, "Invalid JSON", http.StatusBadRequest)
+                        return
+                }
+                
+                order, err := orderManager.SubmitOrder(r.Context(), &req)
+                if err != nil {
+                        http.Error(w, fmt.Sprintf("Failed to submit order: %v", err), http.StatusInternalServerError)
+                        return
+                }
+                
+                writeJSON(w, order)
+                
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handleOrderByID handles requests for specific orders
+func handleOrderByID(w http.ResponseWriter, r *http.Request, orderManager orders.OrderManager) {
+        // Extract order ID from URL path
+        path := strings.TrimPrefix(r.URL.Path, "/api/v1/orders/")
+        if path == "" {
+                http.Error(w, "Order ID required", http.StatusBadRequest)
+                return
+        }
+        
+        switch r.Method {
+        case http.MethodGet:
+                // Get specific order
+                order, err := orderManager.GetOrder(r.Context(), path)
+                if err != nil {
+                        http.Error(w, fmt.Sprintf("Order not found: %v", err), http.StatusNotFound)
+                        return
+                }
+                
+                writeJSON(w, order)
+                
+        case http.MethodDelete:
+                // Cancel order
+                err := orderManager.CancelOrder(r.Context(), path)
+                if err != nil {
+                        http.Error(w, fmt.Sprintf("Failed to cancel order: %v", err), http.StatusInternalServerError)
+                        return
+                }
+                
+                writeJSON(w, map[string]string{"status": "cancelled"})
+                
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handlePositions handles position management requests
+func handlePositions(w http.ResponseWriter, r *http.Request, orderManager orders.OrderManager) {
+        switch r.Method {
+        case http.MethodGet:
+                // Get all positions with optional filters
+                filters := make(map[string]interface{})
+                if exchange := r.URL.Query().Get("exchange"); exchange != "" {
+                        filters["exchange"] = exchange
+                }
+                if symbol := r.URL.Query().Get("symbol"); symbol != "" {
+                        filters["symbol"] = symbol
+                }
+                
+                positions, err := orderManager.GetPositions(r.Context(), filters)
+                if err != nil {
+                        http.Error(w, fmt.Sprintf("Failed to get positions: %v", err), http.StatusInternalServerError)
+                        return
+                }
+                
+                writeJSON(w, map[string]interface{}{
+                        "positions": positions,
+                        "count":     len(positions),
+                })
+                
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handleExecutions handles execution history requests
+func handleExecutions(w http.ResponseWriter, r *http.Request, orderManager orders.OrderManager) {
+        switch r.Method {
+        case http.MethodGet:
+                // Get execution history with optional filters
+                filters := make(map[string]interface{})
+                if orderID := r.URL.Query().Get("order_id"); orderID != "" {
+                        filters["order_id"] = orderID
+                }
+                if exchange := r.URL.Query().Get("exchange"); exchange != "" {
+                        filters["exchange"] = exchange
+                }
+                if symbol := r.URL.Query().Get("symbol"); symbol != "" {
+                        filters["symbol"] = symbol
+                }
+                
+                executions, err := orderManager.GetExecutions(r.Context(), filters)
+                if err != nil {
+                        http.Error(w, fmt.Sprintf("Failed to get executions: %v", err), http.StatusInternalServerError)
+                        return
+                }
+                
+                writeJSON(w, map[string]interface{}{
+                        "executions": executions,
+                        "count":      len(executions),
+                })
+                
         default:
                 http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
         }

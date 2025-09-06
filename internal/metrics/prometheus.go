@@ -327,6 +327,31 @@ func (m *Metrics) RecordOrderBookLatency(duration time.Duration) {
 	m.OrderBookLatency.Observe(float64(duration.Microseconds()))
 }
 
+// RecordOrderEvent records an order event
+func (m *Metrics) RecordOrderEvent(eventType, status string) {
+	m.OrderEvents.WithLabelValues(eventType, status).Inc()
+}
+
+// RecordOrderValue records order value
+func (m *Metrics) RecordOrderValue(value float64) {
+	m.OrderValue.Add(value)
+}
+
+// RecordOrderFilled records order filled quantity
+func (m *Metrics) RecordOrderFilled(quantity float64) {
+	m.OrderFilled.Add(quantity)
+}
+
+// RecordPositionValue records position value
+func (m *Metrics) RecordPositionValue(value float64) {
+	m.PortfolioValue.Add(value)
+}
+
+// RecordPositionPNL records position PNL
+func (m *Metrics) RecordPositionPNL(pnl float64) {
+	m.DailyLoss.Add(pnl)
+}
+
 // RecordStrategySignal records a strategy signal
 func (m *Metrics) RecordStrategySignal(strategy, symbol, side string) {
 	m.StrategySignals.WithLabelValues(strategy, symbol, side).Inc()
