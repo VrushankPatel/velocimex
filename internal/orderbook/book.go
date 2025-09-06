@@ -125,3 +125,27 @@ func (b *OrderBook) GetSpreadPercentage() float64 {
 	
 	return spread / midPrice * 100
 }
+
+// GetBestBid returns the best bid price level
+func (b *OrderBook) GetBestBid() *normalizer.PriceLevel {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	
+	if len(b.Bids) == 0 {
+		return nil
+	}
+	
+	return &b.Bids[0]
+}
+
+// GetBestAsk returns the best ask price level
+func (b *OrderBook) GetBestAsk() *normalizer.PriceLevel {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	
+	if len(b.Asks) == 0 {
+		return nil
+	}
+	
+	return &b.Asks[0]
+}

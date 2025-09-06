@@ -4,9 +4,11 @@ import (
         "context"
         "fmt"
         "log"
+        "math"
         "sync"
         "time"
 
+        "github.com/shopspring/decimal"
         "velocimex/internal/orderbook"
 )
 
@@ -95,6 +97,10 @@ func (s *ArbitrageStrategy) SetOrderBookManager(manager *orderbook.Manager) {
 }
 
 // GetName returns the name of the strategy
+func (s *ArbitrageStrategy) GetID() string {
+        return "arbitrage"
+}
+
 func (s *ArbitrageStrategy) GetName() string {
         return s.config.Name
 }
@@ -348,4 +354,127 @@ func calculateConfidence(opportunity ArbitrageOpportunity) float64 {
         confidence := (normalizedProfit + normalizedLatency) / 2.0
         
         return confidence
+}
+
+// GenerateSignals generates trading signals for backtesting
+func (s *ArbitrageStrategy) GenerateSignals(orderBooks map[string]*orderbook.OrderBook) ([]*Signal, error) {
+        var signals []*Signal
+        
+        // Find arbitrage opportunities
+        opportunities := s.findArbitrageOpportunities(orderBooks)
+        
+        for _, opportunity := range opportunities {
+                if opportunity.IsValid && opportunity.ProfitPercent > s.config.MinProfitThreshold {
+                        // Generate buy signal
+                        buySignal := &Signal{
+                                Symbol:   opportunity.Symbol,
+                                Exchange: opportunity.BuyExchange,
+                                Side:     "BUY",
+                                Quantity: decimal.NewFromFloat(opportunity.MaxVolume),
+                                Price:    decimal.NewFromFloat(opportunity.BuyPrice),
+                                Metadata: map[string]interface{}{
+                                        "opportunity_id": fmt.Sprintf("%s_%s_%s", opportunity.BuyExchange, opportunity.SellExchange, opportunity.Symbol),
+                                        "profit_percent": opportunity.ProfitPercent,
+                                        "estimated_profit": opportunity.EstimatedProfit,
+                                },
+                        }
+                        signals = append(signals, buySignal)
+                        
+                        // Generate sell signal
+                        sellSignal := &Signal{
+                                Symbol:   opportunity.Symbol,
+                                Exchange: opportunity.SellExchange,
+                                Side:     "SELL",
+                                Quantity: decimal.NewFromFloat(opportunity.MaxVolume),
+                                Price:    decimal.NewFromFloat(opportunity.SellPrice),
+                                Metadata: map[string]interface{}{
+                                        "opportunity_id": fmt.Sprintf("%s_%s_%s", opportunity.BuyExchange, opportunity.SellExchange, opportunity.Symbol),
+                                        "profit_percent": opportunity.ProfitPercent,
+                                        "estimated_profit": opportunity.EstimatedProfit,
+                                },
+                        }
+                        signals = append(signals, sellSignal)
+                }
+        }
+        
+        return signals, nil
+}
+
+// findArbitrageOpportunities finds arbitrage opportunities from order books
+func (s *ArbitrageStrategy) findArbitrageOpportunities(orderBooks map[string]*orderbook.OrderBook) []ArbitrageOpportunity {
+        var opportunities []ArbitrageOpportunity
+        
+        // Simple implementation - compare prices across exchanges
+        for symbol := range orderBooks {
+                for _, exchange1 := range s.config.Exchanges {
+                        for _, exchange2 := range s.config.Exchanges {
+                                if exchange1 == exchange2 {
+                                        continue
+                                }
+                                
+                                key1 := fmt.Sprintf("%s:%s", exchange1, symbol)
+                                key2 := fmt.Sprintf("%s:%s", exchange2, symbol)
+                                
+                                book1, exists1 := orderBooks[key1]
+                                book2, exists2 := orderBooks[key2]
+                                
+                                if !exists1 || !exists2 {
+                                        continue
+                                }
+                                
+                                // Get best bid and ask prices
+                                bestBid1 := book1.GetBestBid()
+                                bestAsk1 := book1.GetBestAsk()
+                                bestBid2 := book2.GetBestBid()
+                                bestAsk2 := book2.GetBestAsk()
+                                
+                                if bestBid1 == nil || bestAsk1 == nil || bestBid2 == nil || bestAsk2 == nil {
+                                        continue
+                                }
+                                
+                                // Check for arbitrage opportunity
+                                if bestBid1.Price > bestAsk2.Price {
+                                        // Buy on exchange2, sell on exchange1
+                                        profit := bestBid1.Price - bestAsk2.Price
+                                        profitPercent := (profit / bestAsk2.Price) * 100
+                                        
+                                        opportunity := ArbitrageOpportunity{
+                                                BuyExchange:     exchange2,
+                                                SellExchange:    exchange1,
+                                                Symbol:          symbol,
+                                                BuyPrice:        bestAsk2.Price,
+                                                SellPrice:       bestBid1.Price,
+                                                MaxVolume:       math.Min(bestAsk2.Volume, bestBid1.Volume),
+                                                ProfitPercent:   profitPercent,
+                                                EstimatedProfit: profit * math.Min(bestAsk2.Volume, bestBid1.Volume),
+                                                Timestamp:       time.Now(),
+                                                IsValid:         profitPercent > s.config.MinimumSpread,
+                                        }
+                                        opportunities = append(opportunities, opportunity)
+                                }
+                                
+                                if bestBid2.Price > bestAsk1.Price {
+                                        // Buy on exchange1, sell on exchange2
+                                        profit := bestBid2.Price - bestAsk1.Price
+                                        profitPercent := (profit / bestAsk1.Price) * 100
+                                        
+                                        opportunity := ArbitrageOpportunity{
+                                                BuyExchange:     exchange1,
+                                                SellExchange:    exchange2,
+                                                Symbol:          symbol,
+                                                BuyPrice:        bestAsk1.Price,
+                                                SellPrice:       bestBid2.Price,
+                                                MaxVolume:       math.Min(bestAsk1.Volume, bestBid2.Volume),
+                                                ProfitPercent:   profitPercent,
+                                                EstimatedProfit: profit * math.Min(bestAsk1.Volume, bestBid2.Volume),
+                                                Timestamp:       time.Now(),
+                                                IsValid:         profitPercent > s.config.MinimumSpread,
+                                        }
+                                        opportunities = append(opportunities, opportunity)
+                                }
+                        }
+                }
+        }
+        
+        return opportunities
 }

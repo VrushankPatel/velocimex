@@ -9,6 +9,7 @@ import (
         "strings"
         "time"
 
+        "velocimex/internal/backtesting"
         "velocimex/internal/normalizer"
         "velocimex/internal/orderbook"
         "velocimex/internal/orders"
@@ -17,7 +18,7 @@ import (
 )
 
 // RegisterRESTHandlers registers REST API endpoints with the HTTP server
-func RegisterRESTHandlers(router *http.ServeMux, bookManager *orderbook.Manager, strategyEngine *strategy.Engine, orderManager orders.OrderManager, riskManager risk.RiskManager) {
+func RegisterRESTHandlers(router *http.ServeMux, bookManager *orderbook.Manager, strategyEngine *strategy.Engine, orderManager orders.OrderManager, riskManager risk.RiskManager, backtestEngine backtesting.BacktestEngine) {
         // API v1 base path
         const apiBase = "/api/v1"
 
@@ -73,6 +74,23 @@ func RegisterRESTHandlers(router *http.ServeMux, bookManager *orderbook.Manager,
         
         router.HandleFunc(apiBase+"/risk/positions", func(w http.ResponseWriter, r *http.Request) {
                 handleRiskPositions(w, r, riskManager)
+        })
+        
+        // Backtesting endpoints
+        router.HandleFunc(apiBase+"/backtesting/run", func(w http.ResponseWriter, r *http.Request) {
+                handleBacktestRun(w, r, backtestEngine)
+        })
+        
+        router.HandleFunc(apiBase+"/backtesting/strategies", func(w http.ResponseWriter, r *http.Request) {
+                handleBacktestStrategies(w, r, backtestEngine)
+        })
+        
+        router.HandleFunc(apiBase+"/backtesting/data", func(w http.ResponseWriter, r *http.Request) {
+                handleBacktestData(w, r, backtestEngine)
+        })
+        
+        router.HandleFunc(apiBase+"/backtesting/config", func(w http.ResponseWriter, r *http.Request) {
+                handleBacktestConfig(w, r, backtestEngine)
         })
 
         // System status endpoint
@@ -504,6 +522,122 @@ func handleRiskPositions(w http.ResponseWriter, r *http.Request, riskManager ris
                         "positions": positions,
                         "count":     len(positions),
                 })
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handleBacktestRun handles backtest execution requests
+func handleBacktestRun(w http.ResponseWriter, r *http.Request, backtestEngine backtesting.BacktestEngine) {
+        switch r.Method {
+        case http.MethodPost:
+                // Parse request body for backtest parameters
+                var request struct {
+                        StrategyID string `json:"strategy_id,omitempty"`
+                        StartDate  string `json:"start_date,omitempty"`
+                        EndDate    string `json:"end_date,omitempty"`
+                }
+                
+                if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+                        http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+                        return
+                }
+                
+                // Update config if dates provided
+                config := backtestEngine.GetConfig()
+                if request.StartDate != "" {
+                        if startDate, err := time.Parse("2006-01-02", request.StartDate); err == nil {
+                                config.StartDate = startDate
+                        }
+                }
+                if request.EndDate != "" {
+                        if endDate, err := time.Parse("2006-01-02", request.EndDate); err == nil {
+                                config.EndDate = endDate
+                        }
+                }
+                
+                if err := backtestEngine.SetConfig(config); err != nil {
+                        http.Error(w, fmt.Sprintf("Failed to update config: %v", err), http.StatusInternalServerError)
+                        return
+                }
+                
+                // Run backtest
+                var result *backtesting.BacktestResult
+                var err error
+                
+                if request.StrategyID != "" {
+                        result, err = backtestEngine.RunBacktestWithStrategy(request.StrategyID)
+                } else {
+                        result, err = backtestEngine.RunBacktest()
+                }
+                
+                if err != nil {
+                        http.Error(w, fmt.Sprintf("Backtest failed: %v", err), http.StatusInternalServerError)
+                        return
+                }
+                
+                writeJSON(w, result)
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handleBacktestStrategies handles backtest strategies requests
+func handleBacktestStrategies(w http.ResponseWriter, r *http.Request, backtestEngine backtesting.BacktestEngine) {
+        switch r.Method {
+        case http.MethodGet:
+                strategies := backtestEngine.GetRegisteredStrategies()
+                strategyList := make([]map[string]interface{}, 0, len(strategies))
+                
+                for _, strategy := range strategies {
+                        strategyList = append(strategyList, map[string]interface{}{
+                                "id":   strategy.GetID(),
+                                "name": strategy.GetName(),
+                        })
+                }
+                
+                writeJSON(w, map[string]interface{}{
+                        "strategies": strategyList,
+                        "count":      len(strategyList),
+                })
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handleBacktestData handles backtest data requests
+func handleBacktestData(w http.ResponseWriter, r *http.Request, backtestEngine backtesting.BacktestEngine) {
+        switch r.Method {
+        case http.MethodGet:
+                availableData := backtestEngine.GetAvailableData()
+                writeJSON(w, map[string]interface{}{
+                        "available_data": availableData,
+                        "symbols":       len(availableData),
+                })
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handleBacktestConfig handles backtest configuration requests
+func handleBacktestConfig(w http.ResponseWriter, r *http.Request, backtestEngine backtesting.BacktestEngine) {
+        switch r.Method {
+        case http.MethodGet:
+                config := backtestEngine.GetConfig()
+                writeJSON(w, config)
+        case http.MethodPost:
+                var config backtesting.BacktestConfig
+                if err := json.NewDecoder(r.Body).Decode(&config); err != nil {
+                        http.Error(w, fmt.Sprintf("Invalid config: %v", err), http.StatusBadRequest)
+                        return
+                }
+                
+                if err := backtestEngine.SetConfig(config); err != nil {
+                        http.Error(w, fmt.Sprintf("Failed to set config: %v", err), http.StatusInternalServerError)
+                        return
+                }
+                
+                writeJSON(w, map[string]string{"status": "success"})
         default:
                 http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
         }

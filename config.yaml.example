@@ -142,6 +142,29 @@ risk:
   risk_free_rate: 0.02
   lookback_period: 30
 
+backtesting:
+  start_date: "2024-01-01T00:00:00Z"
+  end_date: "2024-12-31T23:59:59Z"
+  initial_capital: 100000.0
+  commission: 0.001
+  slippage: 0.0005
+  latency: 10ms
+  data_frequency: 1s
+  risk_management: true
+  symbols:
+    - "BTC/USD"
+    - "ETH/USD"
+    - "AAPL"
+    - "GOOGL"
+  exchanges:
+    - "binance"
+    - "coinbase"
+    - "nasdaq"
+  strategy_config:
+    arbitrage:
+      min_spread: 0.001
+      max_position_size: 10000.0
+
 strategies:
   arbitrage:
     name: "Cross-Exchange Arbitrage"

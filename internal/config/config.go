@@ -6,6 +6,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 	
+	"velocimex/internal/backtesting"
 	"velocimex/internal/fix"
 	"velocimex/internal/risk"
 	"velocimex/internal/strategy"
@@ -13,12 +14,13 @@ import (
 
 // Config contains all application configuration
 type Config struct {
-	Server     ServerConfig     `yaml:"server"`
-	Feeds      []FeedConfig     `yaml:"feeds"`
-	FIX        fix.Config       `yaml:"fix"`
-	Risk       risk.RiskConfig  `yaml:"risk"`
-	Strategies StrategiesConfig `yaml:"strategies"`
-	Simulation SimulationConfig `yaml:"simulation"`
+	Server      ServerConfig           `yaml:"server"`
+	Feeds       []FeedConfig           `yaml:"feeds"`
+	FIX         fix.Config             `yaml:"fix"`
+	Risk        risk.RiskConfig        `yaml:"risk"`
+	Backtesting backtesting.BacktestConfig `yaml:"backtesting"`
+	Strategies  StrategiesConfig       `yaml:"strategies"`
+	Simulation  SimulationConfig       `yaml:"simulation"`
 }
 
 // ServerConfig contains HTTP server configuration

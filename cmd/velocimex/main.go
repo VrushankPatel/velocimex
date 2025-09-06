@@ -12,6 +12,7 @@ import (
         "time"
 
         "velocimex/internal/api"
+        "velocimex/internal/backtesting"
         "velocimex/internal/config"
         "velocimex/internal/feeds"
         "velocimex/internal/normalizer"
@@ -46,6 +47,12 @@ func main() {
                 log.Fatalf("Failed to start risk manager: %v", err)
         }
         
+        // Initialize backtesting engine
+        backtestEngine := backtesting.NewEngine()
+        if err := backtestEngine.SetConfig(cfg.Backtesting); err != nil {
+                log.Fatalf("Failed to configure backtesting engine: %v", err)
+        }
+        
         // Setup market data feeds
         feedManager := feeds.NewManager(normalizer, cfg.Feeds)
         feedManager.SetOrderBookManager(orderBookManager)
@@ -55,13 +62,19 @@ func main() {
         
         // Initialize strategy engine
         strategyEngine := strategy.NewEngine(orderBookManager)
-        strategyEngine.RegisterStrategy(strategy.NewArbitrageStrategy(cfg.Strategies.Arbitrage))
+        arbitrageStrategy := strategy.NewArbitrageStrategy(cfg.Strategies.Arbitrage)
+        strategyEngine.RegisterStrategy(arbitrageStrategy)
+        
+        // Register strategy with backtesting engine
+        if err := backtestEngine.RegisterStrategy(arbitrageStrategy); err != nil {
+                log.Fatalf("Failed to register strategy with backtesting engine: %v", err)
+        }
         
         // Start the HTTP and WebSocket server
         router := http.NewServeMux()
         
         // Register API endpoints
-        api.RegisterRESTHandlers(router, orderBookManager, strategyEngine, orderManager, riskManager)
+        api.RegisterRESTHandlers(router, orderBookManager, strategyEngine, orderManager, riskManager, backtestEngine)
         
         // Setup WebSocket server
         wsServer := api.NewWebSocketServer(orderBookManager, strategyEngine, orderManager, riskManager)
@@ -116,6 +129,7 @@ func main() {
         // Graceful shutdown
         orderManager.Stop(ctx)
         riskManager.Stop()
+        backtestEngine.Stop()
         feedManager.Disconnect()
         wsServer.Close()
         
