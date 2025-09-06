@@ -2,6 +2,7 @@ package normalizer
 
 import (
         "log"
+        "strings"
         "time"
 )
 
@@ -79,12 +80,23 @@ func (n *Normalizer) NormalizeOrderBook(exchange, symbol string, data map[string
 
 // NormalizeSymbol normalizes a symbol from exchange-specific to standard format
 func (n *Normalizer) NormalizeSymbol(exchange, symbol string) string {
-        // This is a simplified implementation
-        // In a real system, this would convert exchange-specific symbols
-        // to a standard format (e.g., "BTCUSD" on all exchanges)
-        
-        // For now, just return the input symbol
-        return symbol
+        // Convert exchange-specific symbols to standard format
+        switch exchange {
+        case "binance":
+                // Binance uses BTCUSDT format
+                return strings.ToUpper(symbol)
+        case "coinbase":
+                // Coinbase uses BTC-USD format
+                return strings.ReplaceAll(strings.ToUpper(symbol), "-", "")
+        case "kraken":
+                // Kraken uses XBT/USD format
+                normalized := strings.ReplaceAll(strings.ToUpper(symbol), "/", "")
+                // Convert XBT back to BTC for consistency
+                normalized = strings.ReplaceAll(normalized, "XBT", "BTC")
+                return normalized
+        default:
+                return strings.ToUpper(symbol)
+        }
 }
 
 // ProcessOrderBookUpdate processes a normalized order book update

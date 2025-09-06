@@ -35,6 +35,7 @@ func main() {
         
         // Setup market data feeds
         feedManager := feeds.NewManager(normalizer, cfg.Feeds)
+        feedManager.SetOrderBookManager(orderBookManager)
         if err := feedManager.Connect(); err != nil {
                 log.Fatalf("Failed to connect to feeds: %v", err)
         }

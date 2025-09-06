@@ -23,6 +23,7 @@ type Manager struct {
         normalizer *normalizer.Normalizer
         feeds      []Feed
         configs    []config.FeedConfig
+        orderBookManager OrderBookManager
         mu         sync.Mutex
 }
 
@@ -35,6 +36,11 @@ func NewManager(normalizer *normalizer.Normalizer, configs []config.FeedConfig) 
         }
 }
 
+// SetOrderBookManager sets the order book manager
+func (m *Manager) SetOrderBookManager(manager OrderBookManager) {
+        m.orderBookManager = manager
+}
+
 // Connect connects to all configured feeds
 func (m *Manager) Connect() error {
         m.mu.Lock()
@@ -44,20 +50,40 @@ func (m *Manager) Connect() error {
                 var feed Feed
                 var err error
 
-                // Create the appropriate feed based on the type
-                switch config.Type {
-                case "websocket":
-                        feed, err = NewWebSocketFeed(config, m.normalizer)
-                case "fix":
-                        feed, err = NewFIXFeed(config, m.normalizer)
-                case "stock":
-                        feed, err = NewStockMarketFeed(config, m.normalizer)
+                // Create the appropriate feed based on the name and type
+                switch config.Name {
+                case "binance":
+                        feed, err = NewBinanceWebSocketFeed(config, m.normalizer)
+                case "coinbase":
+                        feed, err = NewCoinbaseWebSocketFeed(config, m.normalizer)
+                case "kraken":
+                        feed, err = NewKrakenWebSocketFeed(config, m.normalizer)
                 default:
-                        return fmt.Errorf("unsupported feed type: %s", config.Type)
+                        switch config.Type {
+                        case "websocket":
+                                feed, err = NewWebSocketFeed(config, m.normalizer)
+                        case "fix":
+                                feed, err = NewFIXFeed(config, m.normalizer)
+                        case "stock":
+                                feed, err = NewStockMarketFeed(config, m.normalizer)
+                        default:
+                                return fmt.Errorf("unsupported feed type: %s", config.Type)
+                        }
                 }
 
                 if err != nil {
                         return fmt.Errorf("failed to create feed %s: %v", config.Name, err)
+                }
+
+                // Set order book manager if available
+                if m.orderBookManager != nil {
+                        if binanceFeed, ok := feed.(*BinanceWebSocketFeed); ok {
+                                binanceFeed.SetOrderBookManager(m.orderBookManager)
+                        } else if coinbaseFeed, ok := feed.(*CoinbaseWebSocketFeed); ok {
+                                coinbaseFeed.SetOrderBookManager(m.orderBookManager)
+                        } else if krakenFeed, ok := feed.(*KrakenWebSocketFeed); ok {
+                                krakenFeed.SetOrderBookManager(m.orderBookManager)
+                        }
                 }
 
                 // Connect to the feed

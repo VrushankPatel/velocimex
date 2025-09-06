@@ -1,7 +1,10 @@
 package orderbook
 
 import (
+	"fmt"
 	"sync"
+
+	"velocimex/internal/normalizer"
 )
 
 // Manager manages multiple order books
@@ -66,4 +69,13 @@ func (m *Manager) GetAllOrderBooks() map[string]*OrderBook {
 	}
 	
 	return books
+}
+
+// UpdateOrderBook updates an order book with new data from an exchange
+func (m *Manager) UpdateOrderBook(exchange, symbol string, bids, asks []normalizer.PriceLevel) {
+	// Create a composite key for exchange-specific order books
+	key := fmt.Sprintf("%s:%s", exchange, symbol)
+	
+	book := m.GetOrderBook(key)
+	book.Update(bids, asks)
 }
