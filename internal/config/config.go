@@ -8,6 +8,7 @@ import (
 	
 	"velocimex/internal/backtesting"
 	"velocimex/internal/fix"
+	"velocimex/internal/metrics"
 	"velocimex/internal/plugins"
 	"velocimex/internal/risk"
 	"velocimex/internal/strategy"
@@ -21,6 +22,7 @@ type Config struct {
 	Risk        risk.RiskConfig        `yaml:"risk"`
 	Backtesting backtesting.BacktestConfig `yaml:"backtesting"`
 	Plugins     plugins.PluginConfig   `yaml:"plugins"`
+	Metrics     metrics.ServerConfig   `yaml:"metrics"`
 	Strategies  StrategiesConfig       `yaml:"strategies"`
 	Simulation  SimulationConfig       `yaml:"simulation"`
 }

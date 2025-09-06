@@ -51,6 +51,23 @@ type Metrics struct {
 	WebSocketConnections prometheus.Gauge
 	WebSocketMessages    *prometheus.CounterVec
 	
+	// Plugin metrics
+	PluginCount          prometheus.Gauge
+	PluginEvents         *prometheus.CounterVec
+	PluginExecutionTime  *prometheus.HistogramVec
+	PluginMemoryUsage    *prometheus.GaugeVec
+	PluginCPUUsage       *prometheus.GaugeVec
+	
+	// Backtesting metrics
+	BacktestRuns         prometheus.Counter
+	BacktestDuration     *prometheus.HistogramVec
+	BacktestResults      *prometheus.GaugeVec
+	
+	// FIX protocol metrics
+	FIXMessages          *prometheus.CounterVec
+	FIXLatency           prometheus.Histogram
+	FIXConnections       *prometheus.GaugeVec
+	
 	// Registry
 	registry *prometheus.Registry
 }
@@ -240,6 +257,89 @@ func New() *Metrics {
 			},
 			[]string{"type"},
 		),
+		
+		// Plugin metrics
+		PluginCount: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "velocimex_plugin_count",
+				Help: "Current number of loaded plugins",
+			},
+		),
+		PluginEvents: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "velocimex_plugin_events_total",
+				Help: "Total number of plugin events",
+			},
+			[]string{"plugin_id", "event_type"},
+		),
+		PluginExecutionTime: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:    "velocimex_plugin_execution_duration_microseconds",
+				Help:    "Plugin execution duration in microseconds",
+				Buckets: prometheus.ExponentialBuckets(1, 2, 15),
+			},
+			[]string{"plugin_id"},
+		),
+		PluginMemoryUsage: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "velocimex_plugin_memory_usage_bytes",
+				Help: "Plugin memory usage in bytes",
+			},
+			[]string{"plugin_id"},
+		),
+		PluginCPUUsage: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "velocimex_plugin_cpu_usage_percent",
+				Help: "Plugin CPU usage percentage",
+			},
+			[]string{"plugin_id"},
+		),
+		
+		// Backtesting metrics
+		BacktestRuns: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "velocimex_backtest_runs_total",
+				Help: "Total number of backtest runs",
+			},
+		),
+		BacktestDuration: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:    "velocimex_backtest_duration_seconds",
+				Help:    "Backtest execution duration in seconds",
+				Buckets: []float64{1, 5, 10, 30, 60, 300, 600, 1800, 3600},
+			},
+			[]string{"strategy"},
+		),
+		BacktestResults: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "velocimex_backtest_results",
+				Help: "Backtest results metrics",
+			},
+			[]string{"strategy", "metric"},
+		),
+		
+		// FIX protocol metrics
+		FIXMessages: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "velocimex_fix_messages_total",
+				Help: "Total number of FIX messages",
+			},
+			[]string{"type", "direction"},
+		),
+		FIXLatency: prometheus.NewHistogram(
+			prometheus.HistogramOpts{
+				Name:    "velocimex_fix_latency_microseconds",
+				Help:    "FIX message latency in microseconds",
+				Buckets: prometheus.ExponentialBuckets(1, 2, 15),
+			},
+		),
+		FIXConnections: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "velocimex_fix_connections",
+				Help: "FIX connection status",
+			},
+			[]string{"session_id", "status"},
+		),
 	}
 	
 	// Register all metrics
@@ -252,6 +352,9 @@ func New() *Metrics {
 		m.OrderBookDepth,
 		m.OrderBookUpdates,
 		m.OrderBookLatency,
+		m.OrderEvents,
+		m.OrderValue,
+		m.OrderFilled,
 		m.StrategySignals,
 		m.StrategyPositions,
 		m.StrategyProfitLoss,
@@ -265,6 +368,17 @@ func New() *Metrics {
 		m.APIErrors,
 		m.WebSocketConnections,
 		m.WebSocketMessages,
+		m.PluginCount,
+		m.PluginEvents,
+		m.PluginExecutionTime,
+		m.PluginMemoryUsage,
+		m.PluginCPUUsage,
+		m.BacktestRuns,
+		m.BacktestDuration,
+		m.BacktestResults,
+		m.FIXMessages,
+		m.FIXLatency,
+		m.FIXConnections,
 	)
 	
 	// Set system info
@@ -420,4 +534,59 @@ func (m *Metrics) RecordWebSocketMessage(msgType string) {
 // UpdateUptime updates the uptime metric
 func (m *Metrics) UpdateUptime() {
 	m.UpTime.SetToCurrentTime()
+}
+
+// RecordPluginCount records the number of loaded plugins
+func (m *Metrics) RecordPluginCount(count int) {
+	m.PluginCount.Set(float64(count))
+}
+
+// RecordPluginEvent records a plugin event
+func (m *Metrics) RecordPluginEvent(pluginID, eventType string) {
+	m.PluginEvents.WithLabelValues(pluginID, eventType).Inc()
+}
+
+// RecordPluginExecutionTime records plugin execution time
+func (m *Metrics) RecordPluginExecutionTime(pluginID string, duration time.Duration) {
+	m.PluginExecutionTime.WithLabelValues(pluginID).Observe(float64(duration.Microseconds()))
+}
+
+// RecordPluginMemoryUsage records plugin memory usage
+func (m *Metrics) RecordPluginMemoryUsage(pluginID string, usage int64) {
+	m.PluginMemoryUsage.WithLabelValues(pluginID).Set(float64(usage))
+}
+
+// RecordPluginCPUUsage records plugin CPU usage
+func (m *Metrics) RecordPluginCPUUsage(pluginID string, usage float64) {
+	m.PluginCPUUsage.WithLabelValues(pluginID).Set(usage)
+}
+
+// RecordBacktestRun records a backtest run
+func (m *Metrics) RecordBacktestRun() {
+	m.BacktestRuns.Inc()
+}
+
+// RecordBacktestDuration records backtest execution duration
+func (m *Metrics) RecordBacktestDuration(strategy string, duration time.Duration) {
+	m.BacktestDuration.WithLabelValues(strategy).Observe(duration.Seconds())
+}
+
+// RecordBacktestResult records backtest result metrics
+func (m *Metrics) RecordBacktestResult(strategy, metric string, value float64) {
+	m.BacktestResults.WithLabelValues(strategy, metric).Set(value)
+}
+
+// RecordFIXMessage records a FIX message
+func (m *Metrics) RecordFIXMessage(msgType, direction string) {
+	m.FIXMessages.WithLabelValues(msgType, direction).Inc()
+}
+
+// RecordFIXLatency records FIX message latency
+func (m *Metrics) RecordFIXLatency(duration time.Duration) {
+	m.FIXLatency.Observe(float64(duration.Microseconds()))
+}
+
+// RecordFIXConnection records FIX connection status
+func (m *Metrics) RecordFIXConnection(sessionID, status string) {
+	m.FIXConnections.WithLabelValues(sessionID, status).Set(1)
 }

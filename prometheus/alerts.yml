@@ -1,0 +1,194 @@
+groups:
+  - name: velocimex-system
+    rules:
+      - alert: VelocimexDown
+        expr: up{job="velocimex"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Velocimex instance is down"
+          description: "Velocimex instance {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: HighMemoryUsage
+        expr: velocimex_plugin_memory_usage_bytes > 100 * 1024 * 1024
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High plugin memory usage"
+          description: "Plugin {{ $labels.plugin_id }} is using {{ $value }} bytes of memory."
+
+      - alert: HighCPUUsage
+        expr: velocimex_plugin_cpu_usage_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High plugin CPU usage"
+          description: "Plugin {{ $labels.plugin_id }} is using {{ $value }}% CPU."
+
+  - name: velocimex-trading
+    rules:
+      - alert: HighOrderLatency
+        expr: histogram_quantile(0.95, velocimex_order_book_latency_microseconds_bucket) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High order book latency"
+          description: "95th percentile order book latency is {{ $value }} microseconds."
+
+      - alert: MarketDataFeedDown
+        expr: velocimex_feed_connections{status="connected"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Market data feed disconnected"
+          description: "Market data feed {{ $labels.exchange }} has been disconnected for more than 2 minutes."
+
+      - alert: HighRiskExposure
+        expr: velocimex_portfolio_value > 1000000
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High portfolio value"
+          description: "Portfolio value is {{ $value }} USD."
+
+      - alert: DailyLossThreshold
+        expr: velocimex_daily_loss_percentage > 5
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Daily loss threshold exceeded"
+          description: "Daily loss is {{ $value }}% of portfolio."
+
+  - name: velocimex-strategies
+    rules:
+      - alert: StrategyExecutionFailure
+        expr: increase(velocimex_strategy_execution_duration_microseconds_count[5m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Strategy not executing"
+          description: "Strategy {{ $labels.strategy }} has not executed for 10 minutes."
+
+      - alert: StrategyHighLatency
+        expr: histogram_quantile(0.95, velocimex_strategy_execution_duration_microseconds_bucket) > 1000000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High strategy execution latency"
+          description: "Strategy {{ $labels.strategy }} execution latency is {{ $value }} microseconds."
+
+      - alert: StrategyLossThreshold
+        expr: velocimex_strategy_profit_loss < -10000
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Strategy loss threshold exceeded"
+          description: "Strategy {{ $labels.strategy }} loss is {{ $value }} USD."
+
+  - name: velocimex-api
+    rules:
+      - alert: HighAPIErrorRate
+        expr: rate(velocimex_api_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API error rate"
+          description: "API error rate is {{ $value }} errors per second."
+
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, velocimex_api_latency_milliseconds_bucket) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API latency"
+          description: "95th percentile API latency is {{ $value }} milliseconds."
+
+      - alert: WebSocketConnectionIssues
+        expr: velocimex_websocket_connections == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No WebSocket connections"
+          description: "No WebSocket connections are active."
+
+  - name: velocimex-backtesting
+    rules:
+      - alert: BacktestFailure
+        expr: increase(velocimex_backtest_runs_total[1h]) == 0
+        for: 1h
+        labels:
+          severity: info
+        annotations:
+          summary: "No backtests run in the last hour"
+          description: "No backtests have been run in the last hour."
+
+      - alert: BacktestHighDuration
+        expr: histogram_quantile(0.95, velocimex_backtest_duration_seconds_bucket) > 3600
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Long backtest execution"
+          description: "Backtest {{ $labels.strategy }} took {{ $value }} seconds to complete."
+
+  - name: velocimex-fix
+    rules:
+      - alert: FIXConnectionDown
+        expr: velocimex_fix_connections{status="connected"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "FIX connection down"
+          description: "FIX session {{ $labels.session_id }} is disconnected."
+
+      - alert: FIXHighLatency
+        expr: histogram_quantile(0.95, velocimex_fix_latency_microseconds_bucket) > 10000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High FIX message latency"
+          description: "95th percentile FIX message latency is {{ $value }} microseconds."
+
+  - name: velocimex-plugins
+    rules:
+      - alert: PluginLoadFailure
+        expr: increase(velocimex_plugin_events_total{event_type="PLUGIN_ERROR"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Plugin error detected"
+          description: "Plugin {{ $labels.plugin_id }} has encountered errors."
+
+      - alert: PluginHighExecutionTime
+        expr: histogram_quantile(0.95, velocimex_plugin_execution_duration_microseconds_bucket) > 1000000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High plugin execution time"
+          description: "Plugin {{ $labels.plugin_id }} execution time is {{ $value }} microseconds."
+
+      - alert: PluginCountZero
+        expr: velocimex_plugin_count == 0
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "No plugins loaded"
+          description: "No plugins are currently loaded."

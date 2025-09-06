@@ -15,6 +15,7 @@ import (
         "velocimex/internal/backtesting"
         "velocimex/internal/config"
         "velocimex/internal/feeds"
+        "velocimex/internal/metrics"
         "velocimex/internal/normalizer"
         "velocimex/internal/orderbook"
         "velocimex/internal/orders"
@@ -60,6 +61,12 @@ func main() {
         // Register plugin loaders
         pluginManager.RegisterLoader(".so", plugins.NewGoLoader())
         
+        // Initialize metrics
+        metricsInstance := metrics.New()
+        
+        // Initialize metrics server
+        metricsServer := metrics.NewServer(cfg.Metrics, metricsInstance)
+        
         // Setup market data feeds
         feedManager := feeds.NewManager(normalizer, cfg.Feeds)
         feedManager.SetOrderBookManager(orderBookManager)
@@ -96,6 +103,15 @@ func main() {
         // Start plugin manager
         if err := pluginManager.Start(); err != nil {
                 log.Fatalf("Failed to start plugin manager: %v", err)
+        }
+        
+        // Start metrics server
+        if cfg.Metrics.Enabled {
+                go func() {
+                        if err := metricsServer.Start(ctx); err != nil {
+                                log.Printf("Metrics server error: %v", err)
+                        }
+                }()
         }
         
         // Start WebSocket server
@@ -143,6 +159,9 @@ func main() {
         riskManager.Stop()
         backtestEngine.Stop()
         pluginManager.Stop()
+        if cfg.Metrics.Enabled {
+                metricsServer.Stop()
+        }
         feedManager.Disconnect()
         wsServer.Close()
         

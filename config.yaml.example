@@ -182,6 +182,14 @@ plugins:
     - "generate_signals"
     - "access_orderbook"
 
+metrics:
+  enabled: true
+  address: "0.0.0.0"
+  port: 9090
+  path: "/metrics"
+  timeout: 30s
+  enable_pprof: false
+
 strategies:
   arbitrage:
     name: "Cross-Exchange Arbitrage"
