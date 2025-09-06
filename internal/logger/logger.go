@@ -16,8 +16,10 @@ type VelocimexLogger struct {
 	config      *Config
 	logger      *log.Logger
 	auditLogger *log.Logger
+	formatter   Formatter
 	mu          sync.RWMutex
 	traceID     string
+	rotation    *RotatingWriter
 }
 
 // New creates a new VelocimexLogger instance
@@ -231,8 +233,17 @@ func (l *VelocimexLogger) GetTraceID() string {
 	return l.traceID
 }
 
+// Flush flushes the logger
+func (l *VelocimexLogger) Flush() {
+	if l.rotation != nil {
+		l.rotation.Sync()
+	}
+}
+
 // Close closes the logger and associated files
 func (l *VelocimexLogger) Close() error {
-	// In a real implementation, we would close file handles here
+	if l.rotation != nil {
+		return l.rotation.Close()
+	}
 	return nil
 }
