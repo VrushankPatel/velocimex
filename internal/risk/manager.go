@@ -491,7 +491,13 @@ func (rm *Manager) matchesEventFilters(event *RiskEvent, filters map[string]inte
 }
 
 func (rm *Manager) riskMonitoringLoop() {
-	ticker := time.NewTicker(rm.config.UpdateInterval)
+	// Ensure we have a valid update interval
+	updateInterval := rm.config.UpdateInterval
+	if updateInterval <= 0 {
+		updateInterval = 1 * time.Second
+	}
+	
+	ticker := time.NewTicker(updateInterval)
 	defer ticker.Stop()
 	
 	for {
