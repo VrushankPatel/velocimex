@@ -92,7 +92,9 @@ func (m *Manager) Connect() error {
 
                 // Connect to the feed
                 if err := feed.Connect(); err != nil {
-                        return fmt.Errorf("failed to connect to feed %s: %v", config.Name, err)
+                        log.Printf("Failed to connect to feed %s: %v", config.Name, err)
+                        // Continue with other feeds instead of failing completely
+                        continue
                 }
 
                 // Subscribe to symbols
