@@ -101,6 +101,27 @@ feeds:
     apiKey: ""
     apiSecret: ""
 
+fix:
+  host: "localhost"
+  port: 9876
+  username: "velocimex"
+  password: "password"
+  timeout: 30s
+  sender_comp_id: "VELOCIMEX"
+  target_comp_id: "EXCHANGE"
+  begin_string: "FIX.4.4"
+  heart_bt_int: 30
+  reset_seq_num: false
+  default_order_type: "1"
+  default_time_in_force: "1"
+  use_ssl: false
+  cert_file: ""
+  key_file: ""
+  ca_file: ""
+  log_heartbeats: false
+  log_messages: true
+  log_file: "fix.log"
+
 strategies:
   arbitrage:
     name: "Cross-Exchange Arbitrage"
