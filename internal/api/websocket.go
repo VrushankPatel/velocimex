@@ -10,6 +10,7 @@ import (
         "github.com/gorilla/websocket"
         "velocimex/internal/orderbook"
         "velocimex/internal/orders"
+        "velocimex/internal/risk"
         "velocimex/internal/strategy"
 )
 
@@ -18,6 +19,7 @@ type WebSocketServer struct {
         orderBooks    *orderbook.Manager
         strategies    *strategy.Engine
         orderManager  orders.OrderManager
+        riskManager   risk.RiskManager
         clients       map[*Client]bool
         broadcast     chan []byte
         register      chan *Client
@@ -37,11 +39,12 @@ type Client struct {
 }
 
 // NewWebSocketServer creates a new WebSocket server
-func NewWebSocketServer(books *orderbook.Manager, strategies *strategy.Engine, orderManager orders.OrderManager) *WebSocketServer {
+func NewWebSocketServer(books *orderbook.Manager, strategies *strategy.Engine, orderManager orders.OrderManager, riskManager risk.RiskManager) *WebSocketServer {
         return &WebSocketServer{
                 orderBooks:   books,
                 strategies:   strategies,
                 orderManager: orderManager,
+                riskManager:  riskManager,
                 clients:      make(map[*Client]bool),
                 broadcast:    make(chan []byte, 256),
                 register:     make(chan *Client),

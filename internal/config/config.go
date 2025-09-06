@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v2"
 	
 	"velocimex/internal/fix"
+	"velocimex/internal/risk"
 	"velocimex/internal/strategy"
 )
 
@@ -15,6 +16,7 @@ type Config struct {
 	Server     ServerConfig     `yaml:"server"`
 	Feeds      []FeedConfig     `yaml:"feeds"`
 	FIX        fix.Config       `yaml:"fix"`
+	Risk       risk.RiskConfig  `yaml:"risk"`
 	Strategies StrategiesConfig `yaml:"strategies"`
 	Simulation SimulationConfig `yaml:"simulation"`
 }

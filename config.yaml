@@ -122,6 +122,26 @@ fix:
   log_messages: true
   log_file: "fix.log"
 
+risk:
+  enabled: true
+  update_interval: 1s
+  alert_thresholds:
+    max_position_size: 10000.0
+    max_portfolio_value: 100000.0
+    max_daily_loss: 5000.0
+    max_drawdown: 0.1
+    max_concentration: 0.2
+    max_leverage: 2.0
+    stop_loss_percentage: 0.05
+    take_profit_percentage: 0.1
+  auto_stop_loss: true
+  auto_take_profit: true
+  max_open_positions: 10
+  position_sizing_mode: "PERCENTAGE"
+  default_position_size: 0.02
+  risk_free_rate: 0.02
+  lookback_period: 30
+
 strategies:
   arbitrage:
     name: "Cross-Exchange Arbitrage"

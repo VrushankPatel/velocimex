@@ -17,6 +17,7 @@ import (
         "velocimex/internal/normalizer"
         "velocimex/internal/orderbook"
         "velocimex/internal/orders"
+        "velocimex/internal/risk"
         "velocimex/internal/strategy"
 )
 
@@ -39,6 +40,12 @@ func main() {
         smartRouter := orders.NewSmartRouter(orders.DefaultSmartRouterConfig(), orderBookManager)
         orderManager := orders.NewManager(orders.DefaultManagerConfig(), smartRouter, nil)
         
+        // Initialize risk management system
+        riskManager := risk.NewManager(cfg.Risk, nil)
+        if err := riskManager.Start(); err != nil {
+                log.Fatalf("Failed to start risk manager: %v", err)
+        }
+        
         // Setup market data feeds
         feedManager := feeds.NewManager(normalizer, cfg.Feeds)
         feedManager.SetOrderBookManager(orderBookManager)
@@ -54,10 +61,10 @@ func main() {
         router := http.NewServeMux()
         
         // Register API endpoints
-        api.RegisterRESTHandlers(router, orderBookManager, strategyEngine, orderManager)
+        api.RegisterRESTHandlers(router, orderBookManager, strategyEngine, orderManager, riskManager)
         
         // Setup WebSocket server
-        wsServer := api.NewWebSocketServer(orderBookManager, strategyEngine, orderManager)
+        wsServer := api.NewWebSocketServer(orderBookManager, strategyEngine, orderManager, riskManager)
         router.Handle("/ws", wsServer)
         
         // Start order manager
@@ -108,6 +115,7 @@ func main() {
         
         // Graceful shutdown
         orderManager.Stop(ctx)
+        riskManager.Stop()
         feedManager.Disconnect()
         wsServer.Close()
         

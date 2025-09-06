@@ -12,11 +12,12 @@ import (
         "velocimex/internal/normalizer"
         "velocimex/internal/orderbook"
         "velocimex/internal/orders"
+        "velocimex/internal/risk"
         "velocimex/internal/strategy"
 )
 
 // RegisterRESTHandlers registers REST API endpoints with the HTTP server
-func RegisterRESTHandlers(router *http.ServeMux, bookManager *orderbook.Manager, strategyEngine *strategy.Engine, orderManager orders.OrderManager) {
+func RegisterRESTHandlers(router *http.ServeMux, bookManager *orderbook.Manager, strategyEngine *strategy.Engine, orderManager orders.OrderManager, riskManager risk.RiskManager) {
         // API v1 base path
         const apiBase = "/api/v1"
 
@@ -55,6 +56,23 @@ func RegisterRESTHandlers(router *http.ServeMux, bookManager *orderbook.Manager,
         
         router.HandleFunc(apiBase+"/executions", func(w http.ResponseWriter, r *http.Request) {
                 handleExecutions(w, r, orderManager)
+        })
+        
+        // Risk management endpoints
+        router.HandleFunc(apiBase+"/risk/portfolio", func(w http.ResponseWriter, r *http.Request) {
+                handleRiskPortfolio(w, r, riskManager)
+        })
+        
+        router.HandleFunc(apiBase+"/risk/metrics", func(w http.ResponseWriter, r *http.Request) {
+                handleRiskMetrics(w, r, riskManager)
+        })
+        
+        router.HandleFunc(apiBase+"/risk/events", func(w http.ResponseWriter, r *http.Request) {
+                handleRiskEvents(w, r, riskManager)
+        })
+        
+        router.HandleFunc(apiBase+"/risk/positions", func(w http.ResponseWriter, r *http.Request) {
+                handleRiskPositions(w, r, riskManager)
         })
 
         // System status endpoint
@@ -419,6 +437,73 @@ func handleExecutions(w http.ResponseWriter, r *http.Request, orderManager order
                         "count":      len(executions),
                 })
                 
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handleRiskPortfolio handles risk portfolio requests
+func handleRiskPortfolio(w http.ResponseWriter, r *http.Request, riskManager risk.RiskManager) {
+        switch r.Method {
+        case http.MethodGet:
+                portfolio := riskManager.GetPortfolio()
+                writeJSON(w, portfolio)
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handleRiskMetrics handles risk metrics requests
+func handleRiskMetrics(w http.ResponseWriter, r *http.Request, riskManager risk.RiskManager) {
+        switch r.Method {
+        case http.MethodGet:
+                metrics := riskManager.GetRiskMetrics()
+                writeJSON(w, metrics)
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handleRiskEvents handles risk events requests
+func handleRiskEvents(w http.ResponseWriter, r *http.Request, riskManager risk.RiskManager) {
+        switch r.Method {
+        case http.MethodGet:
+                // Get risk events with optional filters
+                filters := make(map[string]interface{})
+                if severity := r.URL.Query().Get("severity"); severity != "" {
+                        filters["severity"] = severity
+                }
+                if eventType := r.URL.Query().Get("type"); eventType != "" {
+                        filters["type"] = eventType
+                }
+                if symbol := r.URL.Query().Get("symbol"); symbol != "" {
+                        filters["symbol"] = symbol
+                }
+                
+                events, err := riskManager.GetRiskEvents(filters)
+                if err != nil {
+                        http.Error(w, fmt.Sprintf("Failed to get risk events: %v", err), http.StatusInternalServerError)
+                        return
+                }
+                
+                writeJSON(w, map[string]interface{}{
+                        "events": events,
+                        "count":  len(events),
+                })
+        default:
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
+}
+
+// handleRiskPositions handles risk positions requests
+func handleRiskPositions(w http.ResponseWriter, r *http.Request, riskManager risk.RiskManager) {
+        switch r.Method {
+        case http.MethodGet:
+                positions := riskManager.GetPositions()
+                writeJSON(w, map[string]interface{}{
+                        "positions": positions,
+                        "count":     len(positions),
+                })
         default:
                 http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
         }
