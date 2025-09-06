@@ -58,6 +58,8 @@ func (m *Manager) Connect() error {
                         feed, err = NewCoinbaseWebSocketFeed(config, m.normalizer)
                 case "kraken":
                         feed, err = NewKrakenWebSocketFeed(config, m.normalizer)
+                case "nasdaq", "nyse", "nse", "bse", "sp500", "dow":
+                        feed, err = NewStockMarketFeed(config, m.normalizer)
                 default:
                         switch config.Type {
                         case "websocket":
@@ -83,6 +85,8 @@ func (m *Manager) Connect() error {
                                 coinbaseFeed.SetOrderBookManager(m.orderBookManager)
                         } else if krakenFeed, ok := feed.(*KrakenWebSocketFeed); ok {
                                 krakenFeed.SetOrderBookManager(m.orderBookManager)
+                        } else if stockFeed, ok := feed.(*StockMarketFeed); ok {
+                                stockFeed.SetOrderBookManager(m.orderBookManager)
                         }
                 }
 

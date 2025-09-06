@@ -94,6 +94,21 @@ func (n *Normalizer) NormalizeSymbol(exchange, symbol string) string {
                 // Convert XBT back to BTC for consistency
                 normalized = strings.ReplaceAll(normalized, "XBT", "BTC")
                 return normalized
+        case "nasdaq", "nyse":
+                // US stock exchanges - keep symbols as is
+                return strings.ToUpper(symbol)
+        case "nse", "bse":
+                // Indian stock exchanges - remove .BSE/.NSE suffix
+                normalized := strings.ToUpper(symbol)
+                normalized = strings.ReplaceAll(normalized, ".BSE", "")
+                normalized = strings.ReplaceAll(normalized, ".NSE", "")
+                return normalized
+        case "sp500":
+                // S&P 500 index
+                return "SP500"
+        case "dow":
+                // Dow Jones index
+                return "DOW"
         default:
                 return strings.ToUpper(symbol)
         }
