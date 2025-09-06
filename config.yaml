@@ -13,7 +13,7 @@ server:
 feeds:
   - name: "binance"
     type: "websocket"
-    url: "wss://stream.binance.com:9443/ws"
+    url: "wss://stream.binance.com:9443"
     subscriptions:
       - "btcusdt@depth"
       - "ethusdt@depth"

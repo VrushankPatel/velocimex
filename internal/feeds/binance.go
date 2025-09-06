@@ -75,7 +75,7 @@ func (f *BinanceWebSocketFeed) Connect() error {
 		streams = append(streams, fmt.Sprintf("%s@depth", binanceSymbol))
 	}
 
-	wsURL := fmt.Sprintf("%s?streams=%s", f.config.URL, strings.Join(streams, "/"))
+	wsURL := fmt.Sprintf("%s/stream?streams=%s", f.config.URL, strings.Join(streams, "/"))
 
 	log.Printf("Connecting to Binance WebSocket: %s", wsURL)
 
