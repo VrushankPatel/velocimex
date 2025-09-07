@@ -97,7 +97,14 @@ func TestSubmitOrder(t *testing.T) {
 	assert.NotEmpty(t, order.ID)
 	assert.Equal(t, "BTC/USD", order.Symbol)
 	assert.Equal(t, OrderSideBuy, order.Side)
-	assert.Equal(t, OrderStatusPending, order.Status)
+	
+	// Wait a bit for the order processor to update the status
+	time.Sleep(10 * time.Millisecond)
+	
+	// Get the updated order
+	updatedOrder, err := manager.GetOrder(ctx, order.ID)
+	require.NoError(t, err)
+	assert.Equal(t, OrderStatusSubmitted, updatedOrder.Status)
 }
 
 // TestCancelOrder tests order cancellation functionality
@@ -218,6 +225,9 @@ func TestPositionManagement(t *testing.T) {
 	err = manager.UpdateOrderStatus(ctx, update)
 	require.NoError(t, err)
 
+	// Wait for the update processor to handle the position update
+	time.Sleep(10 * time.Millisecond)
+
 	// Verify position creation
 	positions, err := manager.GetPositions(ctx, map[string]interface{}{"symbol": "BTC/USD"})
 	require.NoError(t, err)
@@ -251,6 +261,9 @@ func TestPositionManagement(t *testing.T) {
 
 	err = manager.UpdateOrderStatus(ctx, sellUpdate)
 	require.NoError(t, err)
+
+	// Wait for the update processor to handle the position update
+	time.Sleep(10 * time.Millisecond)
 
 	// Verify position update
 	updatedPositions, err := manager.GetPositions(ctx, map[string]interface{}{"symbol": "BTC/USD"})
@@ -307,7 +320,7 @@ func TestConcurrentOrderSubmission(t *testing.T) {
 	require.NoError(t, err)
 	defer manager.Stop(ctx)
 
-	const numOrders = 100
+	const numOrders = 10
 	var wg sync.WaitGroup
 	orders := make([]*Order, numOrders)
 

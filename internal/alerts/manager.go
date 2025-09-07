@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -56,7 +57,9 @@ func (am *VelocimexAlertManager) AddRule(rule *AlertRule) error {
 	
 	am.rules[rule.ID] = rule
 	
-	am.logger.Info("alert", "Added alert rule")
+	if am.logger != nil {
+		am.logger.Info("alert", "Added alert rule")
+	}
 	
 	return nil
 }
@@ -72,7 +75,9 @@ func (am *VelocimexAlertManager) RemoveRule(ruleID string) error {
 	
 	delete(am.rules, ruleID)
 	
-	am.logger.Info("alert", "Removed alert rule")
+	if am.logger != nil {
+		am.logger.Info("alert", "Removed alert rule")
+	}
 	
 	return nil
 }
@@ -88,7 +93,9 @@ func (am *VelocimexAlertManager) UpdateRule(rule *AlertRule) error {
 	
 	am.rules[rule.ID] = rule
 	
-	am.logger.Info("alert", "Updated alert rule")
+	if am.logger != nil {
+		am.logger.Info("alert", "Updated alert rule")
+	}
 	
 	return nil
 }
@@ -125,8 +132,12 @@ func (am *VelocimexAlertManager) TriggerAlert(rule *AlertRule, data interface{})
 		return nil
 	}
 	
-	// Check cooldown
-	if time.Since(rule.LastTriggered) < rule.Cooldown {
+	// Check cooldown (with proper locking)
+	am.ruleMutex.RLock()
+	lastTriggered := rule.LastTriggered
+	am.ruleMutex.RUnlock()
+	
+	if time.Since(lastTriggered) < rule.Cooldown {
 		return nil
 	}
 	
@@ -161,7 +172,9 @@ func (am *VelocimexAlertManager) TriggerAlert(rule *AlertRule, data interface{})
 	am.sendAlertToChannels(alert, rule.Channels)
 	
 	// Log alert
-	am.logger.Info("alert", "Alert triggered")
+	if am.logger != nil {
+		am.logger.Info("alert", "Alert triggered")
+	}
 	
 	// Send event
 	am.eventChan <- &AlertEvent{
@@ -187,7 +200,9 @@ func (am *VelocimexAlertManager) AcknowledgeAlert(alertID string) error {
 	
 	alert.Acknowledged = true
 	
-	am.logger.Info("alert", "Alert acknowledged")
+	if am.logger != nil {
+		am.logger.Info("alert", "Alert acknowledged")
+	}
 	
 	return nil
 }
@@ -206,7 +221,9 @@ func (am *VelocimexAlertManager) ResolveAlert(alertID string) error {
 	now := time.Now()
 	alert.ResolvedAt = &now
 	
-	am.logger.Info("alert", "Alert resolved")
+	if am.logger != nil {
+		am.logger.Info("alert", "Alert resolved")
+	}
 	
 	return nil
 }
@@ -240,7 +257,9 @@ func (am *VelocimexAlertManager) RegisterChannel(channel AlertChannel) error {
 	
 	am.channels[channel.Name()] = channel
 	
-	am.logger.Info("alert", "Registered alert channel")
+	if am.logger != nil {
+		am.logger.Info("alert", "Registered alert channel")
+	}
 	
 	return nil
 }
@@ -256,14 +275,18 @@ func (am *VelocimexAlertManager) RemoveChannel(channelName string) error {
 	
 	delete(am.channels, channelName)
 	
-	am.logger.Info("alert", "Removed alert channel")
+	if am.logger != nil {
+		am.logger.Info("alert", "Removed alert channel")
+	}
 	
 	return nil
 }
 
 // Start starts the alert manager
 func (am *VelocimexAlertManager) Start() error {
-	am.logger.Info("alert", "Starting alert manager")
+	if am.logger != nil {
+		am.logger.Info("alert", "Starting alert manager")
+	}
 	
 	// Start event processing
 	go am.processEvents()
@@ -273,7 +296,9 @@ func (am *VelocimexAlertManager) Start() error {
 
 // Stop stops the alert manager
 func (am *VelocimexAlertManager) Stop() error {
-	am.logger.Info("alert", "Stopping alert manager")
+	if am.logger != nil {
+		am.logger.Info("alert", "Stopping alert manager")
+	}
 	
 	am.cancel()
 	
@@ -370,7 +395,7 @@ func (am *VelocimexAlertManager) formatMessage(template string, data interface{}
 	for key, value := range dataMap {
 		placeholder := fmt.Sprintf("{{%s}}", key)
 		strValue := fmt.Sprintf("%v", value)
-		template = replaceAll(template, placeholder, strValue)
+		template = strings.ReplaceAll(template, placeholder, strValue)
 	}
 	
 	return template
@@ -386,7 +411,9 @@ func (am *VelocimexAlertManager) sendAlertToChannels(alert *Alert, channelNames 
 		for _, channel := range am.channels {
 			go func(ch AlertChannel) {
 				if err := ch.Send(alert); err != nil {
-					am.logger.Error("alert", "Failed to send alert to channel")
+					if am.logger != nil {
+						am.logger.Error("alert", "Failed to send alert to channel")
+					}
 				}
 			}(channel)
 		}
@@ -398,12 +425,15 @@ func (am *VelocimexAlertManager) sendAlertToChannels(alert *Alert, channelNames 
 		if channel, exists := am.channels[channelName]; exists {
 			go func(ch AlertChannel) {
 				if err := ch.Send(alert); err != nil {
-					am.logger.Error("alert", "Failed to send alert to channel")
+					if am.logger != nil {
+						am.logger.Error("alert", "Failed to send alert to channel")
+					}
 				}
 			}(channel)
 		}
 	}
 }
+
 
 // matchesFilters checks if an alert matches the given filters
 func (am *VelocimexAlertManager) matchesFilters(alert *Alert, filters map[string]interface{}) bool {
@@ -438,34 +468,11 @@ func (am *VelocimexAlertManager) processEvents() {
 			if !ok {
 				return
 			}
-			
-		am.logger.Debug("alert", "Processing alert event")
-			
+			if am.logger != nil {
+				am.logger.Debug("alert", "Processing alert event")
+			}
 		case <-am.ctx.Done():
 			return
 		}
 	}
-}
-
-// Helper function for string replacement
-func replaceAll(s, old, new string) string {
-	// Simple implementation - in production, use strings.ReplaceAll
-	result := s
-	for {
-		if idx := indexOf(result, old); idx != -1 {
-			result = result[:idx] + new + result[idx+len(old):]
-		} else {
-			break
-		}
-	}
-	return result
-}
-
-func indexOf(s, substr string) int {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
-	}
-	return -1
 }

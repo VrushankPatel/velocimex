@@ -179,7 +179,25 @@ class ChartManager {
     }
 
     init() {
-        const ctx = document.getElementById('performance-chart').getContext('2d');
+        const canvas = document.getElementById('performance-chart');
+        if (!canvas) {
+            console.warn('Performance chart canvas not found');
+            return;
+        }
+        
+        // Check if canvas is already in use
+        const existingChart = Chart.getChart(canvas);
+        if (existingChart) {
+            existingChart.destroy();
+        }
+        
+        // Destroy existing chart if it exists
+        if (this.chart) {
+            this.chart.destroy();
+            this.chart = null;
+        }
+        
+        const ctx = canvas.getContext('2d');
         this.chart = new Chart(ctx, {
             type: 'line',
             data: this.data,
@@ -296,6 +314,21 @@ export class VelocimexApp {
         this.marketData = new Map();
         this.arbitrageData = [];
         this.signals = [];
+        this.isConnected = false;
+
+        // Initialize managers
+        this.toastManager = new ToastManager();
+        this.notificationManager = new NotificationManager();
+        
+        // Initialize chart manager after DOM is ready
+        setTimeout(() => {
+            try {
+                this.chartManager = new ChartManager();
+            } catch (error) {
+                console.warn('Chart manager initialization failed:', error);
+                this.chartManager = null;
+            }
+        }, 100);
 
         this.init();
     }
@@ -323,6 +356,14 @@ export class VelocimexApp {
     init() {
         // Initialize WebSocket
         this.initWebSocket();
+        
+        // Setup UI event handlers after DOM is ready
+        setTimeout(() => {
+            this.setupEventHandlers();
+        }, 50);
+        
+        // Apply saved theme
+        this.applyTheme(this.settings.theme);
     }
 
     logToPage(msg) {
@@ -330,6 +371,27 @@ export class VelocimexApp {
         if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
             return;
         }
+
+        // Throttle debug log updates to prevent UI blocking
+        if (!this.debugLogThrottle) {
+            this.debugLogThrottle = {
+                messages: [],
+                lastUpdate: 0,
+                updateInterval: 1000 // Update every 1 second instead of every message
+            };
+        }
+
+        // Add message to queue
+        const timestamp = new Date().toLocaleTimeString();
+        this.debugLogThrottle.messages.push(`${timestamp} | ${msg}`);
+
+        // Only update DOM if enough time has passed
+        const now = Date.now();
+        if (now - this.debugLogThrottle.lastUpdate < this.debugLogThrottle.updateInterval) {
+            return;
+        }
+
+        this.debugLogThrottle.lastUpdate = now;
 
         let el = document.getElementById('debug-log');
         if (!el) {
@@ -355,19 +417,27 @@ export class VelocimexApp {
             document.body.appendChild(el);
         }
         
-        // Keep only last 50 messages
-        const lines = el.innerText.split('\n');
-        if (lines.length > 50) {
-            lines.shift();
+        // Keep only last 20 messages to reduce DOM size
+        if (this.debugLogThrottle.messages.length > 20) {
+            this.debugLogThrottle.messages = this.debugLogThrottle.messages.slice(-20);
         }
-        lines.push(`${new Date().toLocaleTimeString()} | ${msg}`);
-        el.innerText = lines.join('\n');
+        
+        // Update DOM with batched messages
+        el.innerHTML = this.debugLogThrottle.messages.join('<br>');
         el.scrollTop = el.scrollHeight;
     }
 
     updateConnectionStatus(isConnected, mode = null) {
+        if (!this.connectionStatusEl) {
+            this.connectionStatusEl = document.getElementById('connection-status');
+        }
         if (!this.connectionStatusEl) return;
-        const [indicator, label] = this.connectionStatusEl.children;
+        
+        const children = this.connectionStatusEl.children;
+        if (!children || children.length < 2) return;
+        
+        const [indicator, label] = children;
+        if (!indicator || !label) return;
         
         if (isConnected) {
             indicator.classList.remove('bg-gray-400', 'bg-red-500');
@@ -380,7 +450,236 @@ export class VelocimexApp {
         }
     }
 
+    setupEventHandlers() {
+        console.log('Setting up event handlers...');
+        
+        // Settings modal handlers
+        const settingsBtn = document.getElementById('settings-button');
+        const settingsModal = document.getElementById('settings-modal');
+        const closeSettingsBtn = document.getElementById('close-settings');
+        const settingsForm = document.getElementById('settings-form');
+        const themeToggleModal = document.getElementById('theme-toggle-modal');
+        
+        console.log('Found elements:', {
+            settingsBtn: !!settingsBtn,
+            settingsModal: !!settingsModal,
+            closeSettingsBtn: !!closeSettingsBtn,
+            settingsForm: !!settingsForm,
+            themeToggleModal: !!themeToggleModal
+        });
+        
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', (e) => {
+                console.log('Settings button clicked');
+                e.preventDefault();
+                this.showSettingsModal();
+            });
+        }
+        
+        if (closeSettingsBtn) {
+            closeSettingsBtn.addEventListener('click', (e) => {
+                console.log('Close settings clicked');
+                e.preventDefault();
+                this.hideSettingsModal();
+            });
+        }
+        
+        if (settingsModal) {
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) {
+                    console.log('Modal backdrop clicked');
+                    this.hideSettingsModal();
+                }
+            });
+        }
+        
+        if (settingsForm) {
+            settingsForm.addEventListener('submit', (e) => {
+                console.log('Settings form submitted');
+                e.preventDefault();
+                e.stopPropagation();
+                try {
+                    this.saveSettings(e);
+                    console.log('Form submit saveSettings completed');
+                } catch (error) {
+                    console.error('Form submit error:', error);
+                }
+                return false;
+            });
+            
+            // Also add click handler to the submit button directly
+            const submitBtn = settingsForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.addEventListener('click', (e) => {
+                    console.log('Submit button clicked directly');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('About to call saveSettings');
+                    
+                    // Call saveSettings and force modal close
+                    this.saveSettings(e);
+                    
+                    // Force close modal regardless
+                    const modal = document.getElementById('settings-modal');
+                    if (modal) {
+                        modal.classList.add('hidden');
+                        console.log('Force closed modal from button handler');
+                    }
+                    
+                    return false;
+                });
+            }
+        }
+        
+        if (themeToggleModal) {
+            themeToggleModal.addEventListener('click', (e) => {
+                console.log('Theme toggle clicked');
+                e.preventDefault();
+                this.toggleTheme();
+            });
+        }
+        
+        // Main theme toggle (if exists)
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', (e) => {
+                console.log('Main theme toggle clicked');
+                e.preventDefault();
+                this.toggleTheme();
+            });
+        }
+        
+        console.log('Event handlers setup complete');
+    }
+
+    showSettingsModal() {
+        const modal = document.getElementById('settings-modal');
+        if (modal) {
+            this.loadSettingsIntoForm();
+            modal.classList.remove('hidden');
+        }
+    }
+
+    hideSettingsModal() {
+        const modal = document.getElementById('settings-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    }
+
+    loadSettingsIntoForm() {
+        const displayDepth = document.getElementById('display-depth');
+        const updateInterval = document.getElementById('update-interval');
+        const chartType = document.getElementById('chart-type');
+        const themeToggle = document.getElementById('theme-toggle-modal');
+        
+        if (displayDepth) displayDepth.value = this.settings.displayDepth;
+        if (updateInterval) updateInterval.value = this.settings.updateInterval;
+        if (chartType) chartType.value = this.settings.chartType;
+        
+        if (themeToggle) {
+            const isDark = this.settings.theme === 'dark';
+            const toggle = themeToggle.querySelector('span');
+            if (toggle) {
+                toggle.classList.toggle('translate-x-6', isDark);
+                toggle.classList.toggle('translate-x-1', !isDark);
+            }
+        }
+    }
+
+    saveSettings(e) {
+        console.log('saveSettings called with event:', e);
+        e.preventDefault();
+        
+        const depthEl = document.getElementById('display-depth');
+        const intervalEl = document.getElementById('update-interval');
+        const chartEl = document.getElementById('chart-type');
+        
+        console.log('Elements found:', {depthEl: !!depthEl, intervalEl: !!intervalEl, chartEl: !!chartEl});
+        
+        if (depthEl && intervalEl && chartEl) {
+            this.settings.displayDepth = parseInt(depthEl.value, 10);
+            this.settings.updateInterval = parseInt(intervalEl.value, 10);
+            this.settings.chartType = chartEl.value;
+            
+            localStorage.setItem('velocimex_settings', JSON.stringify(this.settings));
+            this.applySettings();
+            
+            console.log('About to hide modal');
+            const modal = document.getElementById('settings-modal');
+            console.log('Modal found:', !!modal);
+            if (modal) {
+                console.log('Adding hidden class');
+                modal.classList.add('hidden');
+                console.log('Modal classes now:', modal.className);
+            }
+        } else {
+            console.log('Missing form elements, not saving');
+        }
+    }
+
+    applySettings() {
+        // Apply theme
+        this.applyTheme(this.settings.theme);
+        
+        // Update chart if it exists
+        if (this.chartManager && this.settings.chartType) {
+            this.chartManager.updateChartType(this.settings.chartType);
+        }
+        
+        // Update orderbook display depth
+        if (this.lastOrderbookData) {
+            this.updateOrderBook(this.lastOrderbookData);
+        }
+    }
+
+    toggleTheme() {
+        const newTheme = this.settings.theme === 'dark' ? 'light' : 'dark';
+        this.settings.theme = newTheme;
+        this.applyTheme(newTheme);
+        
+        // Save to localStorage
+        localStorage.setItem('theme', newTheme);
+        localStorage.setItem('velocimex-settings', JSON.stringify(this.settings));
+        
+        // Update toggle states
+        this.updateThemeToggles();
+    }
+
+    applyTheme(theme) {
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }
+
+    updateThemeToggles() {
+        const isDark = this.settings.theme === 'dark';
+        
+        // Update main theme toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            const toggle = themeToggle.querySelector('span');
+            if (toggle) {
+                toggle.classList.toggle('translate-x-6', isDark);
+                toggle.classList.toggle('translate-x-1', !isDark);
+            }
+        }
+        
+        // Update modal theme toggle
+        const themeToggleModal = document.getElementById('theme-toggle-modal');
+        if (themeToggleModal) {
+            const toggle = themeToggleModal.querySelector('span');
+            if (toggle) {
+                toggle.classList.toggle('translate-x-6', isDark);
+                toggle.classList.toggle('translate-x-1', !isDark);
+            }
+        }
+    }
+
     handleSystemStatus(status) {
+        this.isConnected = true;
         this.updateConnectionStatus(true, status.mode);
         this.emit('websocket:status', status);
     }
@@ -419,6 +718,7 @@ export class VelocimexApp {
             
             this.ws.onopen = () => {
                 this.logToPage('WebSocket connected');
+                this.isConnected = true;
                 this.updateConnectionStatus(true);
                 this.emit('websocket:open');
 
@@ -444,19 +744,35 @@ export class VelocimexApp {
 
             this.ws.onclose = () => {
                 this.logToPage('WebSocket disconnected');
+                this.isConnected = false;
                 this.updateConnectionStatus(false);
                 this.emit('websocket:close');
-                setTimeout(() => this.initWebSocket(), 2000);
+                
+                // Attempt to reconnect after 3 seconds
+                setTimeout(() => {
+                    if (this.ws.readyState === WebSocket.CLOSED) {
+                        this.logToPage('Attempting to reconnect...');
+                        this.initWebSocket();
+                    }
+                }, 3000);
             };
 
             this.ws.onerror = (error) => {
-                this.logToPage('WebSocket error: ' + error.message);
+                this.logToPage('WebSocket error: ' + error);
+                this.isConnected = false;
                 this.updateConnectionStatus(false);
                 this.emit('websocket:error', error);
             };
 
             this.ws.onmessage = (event) => {
-                this.logToPage('WebSocket message: ' + event.data);
+                // Only log every 10th message to reduce spam
+                if (!this.messageCount) this.messageCount = 0;
+                this.messageCount++;
+                
+                if (this.messageCount % 10 === 0) {
+                    this.logToPage(`WebSocket messages received: ${this.messageCount}`);
+                }
+                
                 try {
                     const message = JSON.parse(event.data);
                     this.handleWebSocketMessage(message);
@@ -489,10 +805,10 @@ export class VelocimexApp {
         switch (messageType) {
             case 'status':
             case 'system':
-                if (message.data?.type === 'symbols') {
-                    this.updateMarketList(message.data.data);
+                if (message.type === 'symbols') {
+                    this.handleSymbolsUpdate(message.data);
                 } else {
-                    this.handleSystemStatus(message.data);
+                    this.handleSystemStatus(message);
                 }
                 break;
                 
@@ -506,31 +822,55 @@ export class VelocimexApp {
                 
             case 'arbitrage':
                 if (Array.isArray(message.data)) {
-                    this.updateArbitrageOpportunities(message.data);
+                    this.handleArbitrageUpdate(message.data);
                 } else {
                     console.warn('Invalid arbitrage data:', message.data);
                 }
                 break;
                 
             case 'strategy':
-                this.updateStrategyData(message.data);
+                this.handleStrategyUpdate(message.data);
                 break;
-
+                
             case 'symbols':
-                if (Array.isArray(message.data)) {
-                    this.updateMarketList(message.data);
-                } else {
-                    console.warn('Invalid symbols data:', message.data);
-                }
+                this.handleSymbolsUpdate(message.data);
+                break;
                 
             default:
-                console.warn('Unhandled message type:', message.type);
+                console.warn('Unhandled message type:', messageType);
         }
     }
 
-    // Helper methods
-    formatPrice(price) {
-        return typeof price === 'number' ? price.toFixed(2) : '0.00';
+    handleSymbolsUpdate(symbols) {
+        console.log('[Debug] Available symbols:', symbols);
+        // Update symbol list in UI if needed
+        if (this.marketSelect && Array.isArray(symbols)) {
+            const currentValue = this.marketSelect.value;
+            this.marketSelect.innerHTML = symbols.map(symbol => 
+                `<option value="${symbol}" ${symbol === currentValue ? 'selected' : ''}>${symbol}</option>`
+            ).join('');
+        }
+    }
+
+    updateMarketData(marketData) {
+        console.log('[Debug] Updating market data:', marketData);
+        this.marketData.set(marketData.symbol, marketData);
+        this.emit('market:update', marketData);
+    }
+
+    updateArbitrage(arbitrageData) {
+        console.log('[Debug] Updating arbitrage data:', arbitrageData);
+        this.arbitrageData = arbitrageData;
+        this.emit('arbitrage:update', arbitrageData);
+    }
+
+    addSignal(signal) {
+        console.log('[Debug] Adding signal:', signal);
+        this.signals.unshift(signal);
+        if (this.signals.length > 100) {
+            this.signals = this.signals.slice(0, 100);
+        }
+        this.emit('signal:new', signal);
     }
 
     formatVolume(volume) {
@@ -540,6 +880,59 @@ export class VelocimexApp {
 
     formatCurrency(amount) {
         return typeof amount === 'number' ? '$' + amount.toFixed(2) : '$0.00';
+    }
+
+    formatPrice(price) {
+        if (typeof price !== 'number') return '0.00';
+        return price.toFixed(2);
+    }
+
+    handleArbitrageUpdate(data) {
+        console.log('[Debug] Updating arbitrage opportunities:', data.length);
+        this.arbitrageData = data;
+        this.emit('arbitrage:update', data);
+        
+        // Update arbitrage list in UI
+        if (this.arbitrageList) {
+            this.updateArbitrageList(data);
+        }
+    }
+
+    handleStrategyUpdate(data) {
+        console.log('[Debug] Strategy update:', data);
+        this.emit('performance:update', data);
+        
+        // Update performance chart if available
+        if (this.chartManager && data.profitLoss !== undefined) {
+            this.chartManager.addDataPoint(new Date(), data.profitLoss);
+        }
+    }
+
+    updateArbitrageList(opportunities) {
+        if (!this.arbitrageList) return;
+        
+        if (!opportunities || opportunities.length === 0) {
+            this.arbitrageList.innerHTML = '<div class="text-center text-gray-500 dark:text-gray-400 py-4">No arbitrage opportunities</div>';
+            return;
+        }
+        
+        const html = opportunities.map(opp => `
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="font-semibold text-gray-900 dark:text-gray-100">${opp.symbol}</div>
+                    <div class="text-sm font-medium text-green-600 dark:text-green-400">
+                        +${opp.profitPercent?.toFixed(2) || '0.00'}%
+                    </div>
+                </div>
+                <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                    <div>Buy: ${opp.buyExchange} @ $${this.formatPrice(opp.buyPrice || 0)}</div>
+                    <div>Sell: ${opp.sellExchange} @ $${this.formatPrice(opp.sellPrice || 0)}</div>
+                    <div>Profit: ${this.formatCurrency(opp.estimatedProfit || 0)}</div>
+                </div>
+            </div>
+        `).join('');
+        
+        this.arbitrageList.innerHTML = html;
     }
 
     setLoading(element, isLoading) {

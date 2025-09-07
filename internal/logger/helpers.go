@@ -8,6 +8,27 @@ import (
 	"time"
 )
 
+// defaultManager is the default log manager instance
+var defaultManager *LogManager
+
+// GetLogger returns the default logger instance
+func GetLogger() *VelocimexLogger {
+	if defaultManager == nil {
+		// Initialize with default config if not already initialized
+		config := &Config{
+			Level:  INFO,
+			Format: "text",
+			Output: "stdout",
+		}
+		var err error
+		defaultManager, err = NewLogManager(config)
+		if err != nil {
+			panic(fmt.Sprintf("failed to initialize default logger: %v", err))
+		}
+	}
+	return defaultManager.GetLogger("default").(*VelocimexLogger)
+}
+
 // Package-level convenience functions
 var (
 	Debug = GetLogger().Debug
@@ -68,7 +89,11 @@ func LogMethodEntry(component string, method string, params ...interface{}) {
 		"params": params,
 		"action": "enter",
 	}
-	GetLogger().Debug(component, fmt.Sprintf("Entering %s", method), fields)
+	if globalLogger != nil {
+		globalLogger.Debug(component, fmt.Sprintf("Entering %s", method), fields)
+	} else {
+		GetLogger().Debug(component, fmt.Sprintf("Entering %s", method), fields)
+	}
 }
 
 // LogMethodExit logs method exit with results
@@ -79,7 +104,11 @@ func LogMethodExit(component string, method string, duration time.Duration, resu
 		"results":  results,
 		"action":   "exit",
 	}
-	GetLogger().Debug(component, fmt.Sprintf("Exiting %s", method), fields)
+	if globalLogger != nil {
+		globalLogger.Debug(component, fmt.Sprintf("Exiting %s", method), fields)
+	} else {
+		GetLogger().Debug(component, fmt.Sprintf("Exiting %s", method), fields)
+	}
 }
 
 // LogPerformance logs performance metrics
@@ -89,7 +118,11 @@ func LogPerformance(component string, operation string, duration time.Duration, 
 		"duration":  duration.Milliseconds(),
 		"metadata":  metadata,
 	}
-	GetLogger().Info(component, fmt.Sprintf("Performance: %s took %v", operation, duration), fields)
+	if globalLogger != nil {
+		globalLogger.Info(component, fmt.Sprintf("Performance: %s took %v", operation, duration), fields)
+	} else {
+		GetLogger().Info(component, fmt.Sprintf("Performance: %s took %v", operation, duration), fields)
+	}
 }
 
 // LogMarketData logs market data updates

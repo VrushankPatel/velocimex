@@ -2,7 +2,6 @@ package alerts
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -36,21 +35,7 @@ type AlertEngine struct {
 	logger        logger.Logger
 }
 
-// AlertConfig holds configuration for the alert engine
-type AlertConfig struct {
-	Enabled           bool          `yaml:"enabled"`
-	MaxWorkers        int           `yaml:"max_workers"`
-	QueueSize         int           `yaml:"queue_size"`
-	ProcessTimeout    time.Duration `yaml:"process_timeout"`
-	RetryAttempts     int           `yaml:"retry_attempts"`
-	RetryDelay        time.Duration `yaml:"retry_delay"`
-	CooldownPeriod    time.Duration `yaml:"cooldown_period"`
-	EnableMetrics     bool          `yaml:"enable_metrics"`
-	EnableTemplates   bool          `yaml:"enable_templates"`
-	EnableScheduling  bool          `yaml:"enable_scheduling"`
-	CleanupInterval   time.Duration `yaml:"cleanup_interval"`
-	MaxAlertAge       time.Duration `yaml:"max_alert_age"`
-}
+// AlertConfig is defined in config.go
 
 // AlertTemplate defines reusable alert templates
 type AlertTemplate struct {
@@ -94,7 +79,7 @@ type AlertMetrics struct {
 // NewAlertEngine creates a new alert engine
 func NewAlertEngine(config *AlertConfig, logger logger.Logger) *AlertEngine {
 	if config == nil {
-		config = GetDefaultAlertConfig()
+		config = DefaultAlertConfig()
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -498,8 +483,8 @@ func (ae *AlertEngine) processAlert(alert *Alert) {
 
 func (ae *AlertEngine) evaluateRule(rule *AlertRule, event *AlertEvent) bool {
 	// Evaluate conditions
-	for _, condition := range rule.Conditions {
-		if !ae.evaluateCondition(condition, event) {
+	for i := range rule.Conditions {
+		if !ae.evaluateCondition(&rule.Conditions[i], event) {
 			return false
 		}
 	}
@@ -567,7 +552,7 @@ func (ae *AlertEngine) triggerRule(rule *AlertRule, event *AlertEvent) {
 	alert := &Alert{
 		ID:        uuid.NewString(),
 		RuleID:    rule.ID,
-		Type:      rule.EventType,
+		Type:      AlertType(rule.EventType), // Convert string to AlertType
 		Severity:  rule.Severity,
 		Title:     rule.Name,
 		Message:   ae.formatMessage(rule, event),
@@ -699,7 +684,7 @@ func (ae *AlertEngine) updateAlertMetrics(alert *Alert) {
 	defer ae.metrics.mu.Unlock()
 
 	ae.metrics.TotalAlerts++
-	ae.metrics.AlertsByType[alert.Type]++
+	ae.metrics.AlertsByType[string(alert.Type)]++
 	ae.metrics.AlertsBySeverity[alert.Severity]++
 	for _, channel := range alert.Channels {
 		ae.metrics.AlertsByChannel[channel]++
@@ -785,20 +770,4 @@ func copySeverityIntMap(m map[AlertSeverity]int) map[AlertSeverity]int {
 	return result
 }
 
-// GetDefaultAlertConfig returns a default alert configuration
-func GetDefaultAlertConfig() *AlertConfig {
-	return &AlertConfig{
-		Enabled:          true,
-		MaxWorkers:       4,
-		QueueSize:        1000,
-		ProcessTimeout:   30 * time.Second,
-		RetryAttempts:    3,
-		RetryDelay:       5 * time.Second,
-		CooldownPeriod:   1 * time.Minute,
-		EnableMetrics:    true,
-		EnableTemplates:  true,
-		EnableScheduling: true,
-		CleanupInterval:  1 * time.Hour,
-		MaxAlertAge:      24 * time.Hour,
-	}
-}
+// GetDefaultAlertConfig is now defined in config.go

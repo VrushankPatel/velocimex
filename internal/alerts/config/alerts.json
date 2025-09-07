@@ -1,0 +1,21 @@
+{
+  "enabled": true,
+  "channels": [],
+  "rules": [],
+  "defaults": {
+    "cooldown": 300000000000,
+    "max_alerts": 1000,
+    "retention_days": 30
+  },
+  "max_workers": 4,
+  "queue_size": 1000,
+  "process_timeout": 30000000000,
+  "retry_attempts": 3,
+  "retry_delay": 5000000000,
+  "cooldown_period": 60000000000,
+  "enable_metrics": true,
+  "enable_templates": true,
+  "enable_scheduling": true,
+  "cleanup_interval": 3600000000000,
+  "max_alert_age": 86400000000000
+}

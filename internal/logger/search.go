@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -459,7 +458,7 @@ func (lse *LogSearchEngine) keyToString(key map[string]interface{}) string {
 	return strings.Join(parts, ",")
 }
 
-func (lse *LogSearchEngine) calculateAggregates(group *AggregationGroup, entries []*LogIndexEntry, aggregates []string, field string) {
+func (lse *LogSearchEngine) calculateAggregates(group AggregationGroup, entries []*LogIndexEntry, aggregates []string, field string) {
 	group.Aggregates = make(map[string]float64)
 
 	for _, agg := range aggregates {

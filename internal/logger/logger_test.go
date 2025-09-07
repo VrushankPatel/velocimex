@@ -280,7 +280,10 @@ func TestComponentLogger(t *testing.T) {
 	// Override global logger
 	globalLogger = logger
 
-	compLogger := NewComponentLogger("test-component")
+	compLogger := &ComponentLogger{
+		component: "test-component",
+		logger:    logger,
+	}
 	compLogger.Info("test message")
 
 	output := buf.String()

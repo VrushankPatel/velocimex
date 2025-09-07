@@ -2,18 +2,12 @@ package logger
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"log"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // LogManager manages multiple loggers and provides centralized logging functionality
@@ -345,11 +339,22 @@ func (lm *LogManager) GetMetrics() *LogMetrics {
 	lm.metrics.mu.RLock()
 	defer lm.metrics.mu.RUnlock()
 	
+	// Create copies of the maps to avoid race conditions
+	logsByLevel := make(map[LogLevel]int64)
+	for k, v := range lm.metrics.LogsByLevel {
+		logsByLevel[k] = v
+	}
+	
+	logsByComponent := make(map[string]int64)
+	for k, v := range lm.metrics.LogsByComponent {
+		logsByComponent[k] = v
+	}
+	
 	// Return a copy to avoid race conditions
 	return &LogMetrics{
 		TotalLogs:       lm.metrics.TotalLogs,
-		LogsByLevel:     copyMap(lm.metrics.LogsByLevel),
-		LogsByComponent: copyMap(lm.metrics.LogsByComponent),
+		LogsByLevel:     logsByLevel,
+		LogsByComponent: logsByComponent,
 		AuditEvents:     lm.metrics.AuditEvents,
 		Errors:          lm.metrics.Errors,
 		Warnings:        lm.metrics.Warnings,
@@ -362,9 +367,7 @@ func (lm *LogManager) Flush() {
 	defer lm.mu.RUnlock()
 	
 	for _, logger := range lm.loggers {
-		if l, ok := logger.(*VelocimexLogger); ok {
-			l.Flush()
-		}
+		logger.Flush()
 	}
 	
 	if lm.auditLogger != nil {
@@ -388,10 +391,8 @@ func (lm *LogManager) Close() error {
 	
 	var lastErr error
 	for _, logger := range lm.loggers {
-		if l, ok := logger.(*VelocimexLogger); ok {
-			if err := l.Close(); err != nil {
-				lastErr = err
-			}
+		if err := logger.Close(); err != nil {
+			lastErr = err
 		}
 	}
 	
@@ -481,23 +482,24 @@ func getCallerInfo() string {
 	return fmt.Sprintf("%s:%d", filepath.Base(file), line)
 }
 
-func getStackTrace() string {
-	buf := make([]byte, 1024)
-	for {
-		n := runtime.Stack(buf, false)
-		if n < len(buf) {
-			return string(buf[:n])
-		}
-		buf = make([]byte, 2*len(buf))
-	}
-}
 
-func copyMap(m map[LogLevel]int64) map[LogLevel]int64 {
-	result := make(map[LogLevel]int64)
-	for k, v := range m {
-		result[k] = v
+func copyMap(m interface{}) interface{} {
+	switch v := m.(type) {
+	case map[LogLevel]int64:
+		result := make(map[LogLevel]int64)
+		for k, v := range v {
+			result[k] = v
+		}
+		return result
+	case map[string]int64:
+		result := make(map[string]int64)
+		for k, v := range v {
+			result[k] = v
+		}
+		return result
+	default:
+		return m
 	}
-	return result
 }
 
 func copyStringMap(m map[string]int64) map[string]int64 {

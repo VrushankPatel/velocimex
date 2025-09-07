@@ -100,9 +100,15 @@ func (l *VelocimexLogger) Fatal(component string, message string, fields ...map[
 
 // WithTrace creates a new logger with trace ID
 func (l *VelocimexLogger) WithTrace(traceID string) Logger {
-	newLogger := *l
-	newLogger.traceID = traceID
-	return &newLogger
+	newLogger := &VelocimexLogger{
+		config:      l.config,
+		logger:      l.logger,
+		auditLogger: l.auditLogger,
+		formatter:   l.formatter,
+		traceID:     traceID,
+		rotation:    l.rotation,
+	}
+	return newLogger
 }
 
 // log is the internal logging function
@@ -246,4 +252,42 @@ func (l *VelocimexLogger) Close() error {
 		return l.rotation.Close()
 	}
 	return nil
+}
+
+// Global logger instance for package-level functions
+var globalLogger *VelocimexLogger
+
+// SetupLoggingDirectory creates the logging directory if it doesn't exist
+func SetupLoggingDirectory(dir string) error {
+	return os.MkdirAll(dir, 0755)
+}
+
+// LoadConfig loads configuration from environment variables
+func LoadConfig() *Config {
+	config := &Config{
+		Level:  INFO,
+		Format: "text",
+		Output: "stdout",
+	}
+	
+	if level := os.Getenv("LOG_LEVEL"); level != "" {
+		switch level {
+		case "DEBUG":
+			config.Level = DEBUG
+		case "INFO":
+			config.Level = INFO
+		case "WARN":
+			config.Level = WARN
+		case "ERROR":
+			config.Level = ERROR
+		case "FATAL":
+			config.Level = FATAL
+		}
+	}
+	
+	if format := os.Getenv("LOG_FORMAT"); format != "" {
+		config.Format = format
+	}
+	
+	return config
 }

@@ -128,8 +128,8 @@ func main() {
         // Subscribe to orderbook manager and strategy engine updates and forward them to clients
         go func() {
             log.Println("Starting forwarding updates to WebSocket clients")
-            // Use a faster ticker (200ms) for more frequent updates to improve UI responsiveness
-            ticker := time.NewTicker(200 * time.Millisecond)
+            // Use a slower ticker (2s) to prevent UI blocking from too frequent updates
+            ticker := time.NewTicker(2 * time.Second)
             defer ticker.Stop()
             
             for range ticker.C {

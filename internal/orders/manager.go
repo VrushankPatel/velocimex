@@ -627,6 +627,10 @@ func (m *Manager) matchesFilters(order *Order, filters map[string]interface{}) b
 			if order.Side != value.(OrderSide) {
 				return false
 			}
+		case "type":
+			if order.Type != value.(OrderType) {
+				return false
+			}
 		case "exchange":
 			if order.Exchange != value.(string) {
 				return false

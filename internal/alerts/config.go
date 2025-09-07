@@ -12,10 +12,24 @@ import (
 
 // AlertConfig represents the configuration for the alert system
 type AlertConfig struct {
-	Enabled  bool                     `json:"enabled"`
-	Channels []map[string]interface{} `json:"channels"`
-	Rules    []map[string]interface{}   `json:"rules"`
-	Defaults AlertDefaults            `json:"defaults"`
+	// Basic configuration
+	Enabled  bool                     `json:"enabled" yaml:"enabled"`
+	Channels []map[string]interface{} `json:"channels" yaml:"channels"`
+	Rules    []map[string]interface{} `json:"rules" yaml:"rules"`
+	Defaults AlertDefaults           `json:"defaults" yaml:"defaults"`
+
+	// Engine configuration
+	MaxWorkers        int           `json:"max_workers" yaml:"max_workers"`
+	QueueSize         int           `json:"queue_size" yaml:"queue_size"`
+	ProcessTimeout    time.Duration `json:"process_timeout" yaml:"process_timeout"`
+	RetryAttempts     int           `json:"retry_attempts" yaml:"retry_attempts"`
+	RetryDelay        time.Duration `json:"retry_delay" yaml:"retry_delay"`
+	CooldownPeriod    time.Duration `json:"cooldown_period" yaml:"cooldown_period"`
+	EnableMetrics     bool          `json:"enable_metrics" yaml:"enable_metrics"`
+	EnableTemplates   bool          `json:"enable_templates" yaml:"enable_templates"`
+	EnableScheduling  bool          `json:"enable_scheduling" yaml:"enable_scheduling"`
+	CleanupInterval   time.Duration `json:"cleanup_interval" yaml:"cleanup_interval"`
+	MaxAlertAge       time.Duration `json:"max_alert_age" yaml:"max_alert_age"`
 }
 
 // AlertDefaults contains default settings for alerts
@@ -28,84 +42,101 @@ type AlertDefaults struct {
 // DefaultAlertConfig returns the default alert configuration
 func DefaultAlertConfig() *AlertConfig {
 	return &AlertConfig{
-		Enabled: true,
+		// Basic configuration
+		Enabled:  true,
 		Channels: []map[string]interface{}{
 			{
-				"type":   "console",
-				"name":   "console",
+				"name": "console",
+				"type": "console",
+				"enabled": true,
 			},
 			{
-				"type":     "file",
-				"name":     "file",
-				"filename": "logs/alerts.jsonl",
+				"name": "email",
+				"type": "email",
+				"enabled": false,
+				"config": map[string]interface{}{
+					"smtp_host": "localhost",
+					"smtp_port": 587,
+				},
 			},
 		},
 		Rules: []map[string]interface{}{
 			{
-				"name":     "High Price Change",
-				"type":     "price",
-				"severity": "high",
-				"conditions": []map[string]interface{}{
-					{
-						"field":    "change_pct",
-						"operator": "gt",
-						"value":    5.0,
-					},
-				},
-				"message": "Price change {{change_pct}}% for {{symbol}}",
-				"cooldown": "5m",
-				"enabled":  true,
-			},
-			{
-				"name":     "Risk Threshold",
-				"type":     "risk",
-				"severity": "critical",
-				"conditions": []map[string]interface{}{
-					{
-						"field":    "risk_pct",
-						"operator": "gt",
-						"value":    10.0,
-					},
-				},
-				"message": "Risk threshold exceeded: {{risk_pct}}%",
-				"cooldown": "1m",
-				"enabled":  true,
-			},
-			{
-				"name":     "System Health",
-				"type":     "system",
+				"id": "price_alert",
+				"name": "Price Alert",
+				"type": "price",
+				"enabled": true,
 				"severity": "medium",
 				"conditions": []map[string]interface{}{
 					{
-						"field":    "status",
-						"operator": "ne",
-						"value":    "healthy",
+						"field": "price",
+						"operator": "gt",
+						"value": 0,
 					},
 				},
-				"message": "System component {{component}} is {{status}}",
-				"cooldown": "30s",
-				"enabled":  true,
 			},
 			{
-				"name":     "Strategy Signal",
-				"type":     "strategy",
+				"id": "volume_alert",
+				"name": "Volume Alert", 
+				"type": "volume",
+				"enabled": true,
 				"severity": "low",
 				"conditions": []map[string]interface{}{
 					{
-						"field":    "signal",
-						"operator": "ne",
-						"value":    "",
+						"field": "volume",
+						"operator": "gt",
+						"value": 1000,
 					},
 				},
-				"message": "Strategy {{strategy_id}} generated signal: {{signal}}",
-				"cooldown": "1m",
-				"enabled":  true,
+			},
+			{
+				"id": "risk_alert",
+				"name": "Risk Alert",
+				"type": "risk",
+				"enabled": true,
+				"severity": "high",
+				"conditions": []map[string]interface{}{
+					{
+						"field": "risk_level",
+						"operator": "gt",
+						"value": 0.8,
+					},
+				},
+			},
+			{
+				"id": "system_alert",
+				"name": "System Alert",
+				"type": "system",
+				"enabled": true,
+				"severity": "critical",
+				"conditions": []map[string]interface{}{
+					{
+						"field": "status",
+						"operator": "eq",
+						"value": "error",
+					},
+				},
 			},
 		},
+
+		// Engine configuration
+		MaxWorkers:        4,
+		QueueSize:         1000,
+		ProcessTimeout:    30 * time.Second,
+		RetryAttempts:     3,
+		RetryDelay:        5 * time.Second,
+		CooldownPeriod:    1 * time.Minute,
+		EnableMetrics:     true,
+		EnableTemplates:   true,
+		EnableScheduling:  true,
+		CleanupInterval:   1 * time.Hour,
+		MaxAlertAge:       24 * time.Hour,
+
+		// Default values
 		Defaults: AlertDefaults{
-			Cooldown:      30 * time.Second,
+			Cooldown:      5 * time.Minute,
 			MaxAlerts:     1000,
-			RetentionDays: 7,
+			RetentionDays: 30,
 		},
 	}
 }

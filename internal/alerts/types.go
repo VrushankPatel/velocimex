@@ -37,31 +37,50 @@ type AlertCondition struct {
 
 // AlertRule defines a rule for generating alerts
 type AlertRule struct {
-	ID          string           `json:"id"`
-	Name        string           `json:"name"`
-	Type        AlertType        `json:"type"`
-	Severity    AlertSeverity    `json:"severity"`
-	Conditions  []AlertCondition `json:"conditions"`
-	Message     string           `json:"message"`
-	Enabled     bool             `json:"enabled"`
-	Cooldown    time.Duration    `json:"cooldown"`
-	Channels    []string         `json:"channels"`
-	LastTriggered time.Time      `json:"last_triggered,omitempty"`
+	ID            string                 `json:"id"`
+	Name          string                 `json:"name"`
+	Type          AlertType              `json:"type"`
+	EventType     string                 `json:"event_type,omitempty"`
+	Severity      AlertSeverity          `json:"severity"`
+	Conditions    []AlertCondition       `json:"conditions"`
+	Message       string                 `json:"message"`
+	TemplateID    string                 `json:"template_id,omitempty"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	Enabled       bool                   `json:"enabled"`
+	Cooldown      time.Duration          `json:"cooldown"`
+	Channels      []string               `json:"channels"`
+	TriggerCount  int                    `json:"trigger_count"`
+	CreatedAt     time.Time              `json:"created_at"`
+	UpdatedAt     time.Time              `json:"updated_at"`
+	LastTriggered time.Time              `json:"last_triggered,omitempty"`
 }
+
+// AlertStatus represents the status of an alert
+type AlertStatus string
+
+const (
+	AlertStatusActive     AlertStatus = "active"
+	AlertStatusAcknowledged AlertStatus = "acknowledged"
+	AlertStatusResolved   AlertStatus = "resolved"
+)
 
 // Alert represents an actual alert that has been triggered
 type Alert struct {
-	ID          string        `json:"id"`
-	RuleID      string        `json:"rule_id"`
-	Type        AlertType     `json:"type"`
-	Severity    AlertSeverity `json:"severity"`
-	Title       string        `json:"title"`
-	Message     string        `json:"message"`
-	Data        interface{}   `json:"data,omitempty"`
-	Timestamp   time.Time     `json:"timestamp"`
-	Acknowledged bool         `json:"acknowledged"`
-	Resolved    bool          `json:"resolved"`
-	ResolvedAt  *time.Time    `json:"resolved_at,omitempty"`
+	ID           string                 `json:"id"`
+	RuleID       string                 `json:"rule_id"`
+	Type         AlertType              `json:"type"`
+	Severity     AlertSeverity          `json:"severity"`
+	Title        string                 `json:"title"`
+	Message      string                 `json:"message"`
+	Data         interface{}            `json:"data,omitempty"`
+	Channels     []string               `json:"channels,omitempty"`
+	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	Timestamp    time.Time              `json:"timestamp"`
+	CreatedAt    time.Time              `json:"created_at"`
+	Acknowledged bool                   `json:"acknowledged"`
+	Resolved     bool                   `json:"resolved"`
+	ResolvedAt   *time.Time             `json:"resolved_at,omitempty"`
+	Status       AlertStatus            `json:"status"`
 }
 
 // AlertChannel represents a delivery channel for alerts
@@ -95,11 +114,16 @@ type AlertManager interface {
 
 // AlertEvent represents an alert-related event
 type AlertEvent struct {
-	Type      string      `json:"type"`
-	AlertID   string      `json:"alert_id,omitempty"`
-	RuleID    string      `json:"rule_id,omitempty"`
-	Timestamp time.Time   `json:"timestamp"`
-	Data      interface{} `json:"data,omitempty"`
+	ID        string                 `json:"id"`
+	Type      string                 `json:"type"`
+	AlertID   string                 `json:"alert_id,omitempty"`
+	RuleID    string                 `json:"rule_id,omitempty"`
+	Severity  AlertSeverity          `json:"severity,omitempty"`
+	Source    string                 `json:"source,omitempty"`
+	Message   string                 `json:"message,omitempty"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Timestamp time.Time              `json:"timestamp"`
+	Data      interface{}            `json:"data,omitempty"`
 }
 
 // PriceAlertData contains data for price-based alerts

@@ -11,6 +11,7 @@ SKIP_TESTS=0
 SKIP_COVERAGE=0
 OBFUSCATE=0
 COMPRESS=0
+TIMEOUT_SECONDS=300  # 5 minutes default timeout
 
 # Process command line arguments
 for arg in "$@"; do
@@ -31,6 +32,10 @@ for arg in "$@"; do
       COMPRESS=1
       shift
       ;;
+    --timeout=*)
+      TIMEOUT_SECONDS="${arg#*=}"
+      shift
+      ;;
     --help)
       echo "Usage: ./build.sh [options]"
       echo ""
@@ -39,11 +44,48 @@ for arg in "$@"; do
       echo "  --skip-coverage  Skip generating coverage report"
       echo "  --obfuscate      Obfuscate Go code using garble (must be installed)"
       echo "  --compress       Compress binary using upx (must be installed)"
+      echo "  --timeout=N      Set timeout in seconds (default: 300)"
       echo "  --help           Show this help message"
       exit 0
       ;;
   esac
 done
+
+# Function to run commands with timeout (macOS compatible)
+run_with_timeout() {
+    local timeout=$1
+    shift
+    
+    echo "Running command with ${timeout}s timeout: $*"
+    
+    # Run command in background
+    "$@" &
+    local cmd_pid=$!
+    
+    # Monitor command with timeout
+    local count=0
+    while [ $count -lt $timeout ]; do
+        if ! kill -0 "$cmd_pid" 2>/dev/null; then
+            # Command finished, get exit code
+            wait "$cmd_pid"
+            local exit_code=$?
+            if [ $exit_code -ne 0 ]; then
+                echo "Error: Command failed with exit code $exit_code"
+                exit $exit_code
+            fi
+            return 0
+        fi
+        sleep 1
+        count=$((count + 1))
+    done
+    
+    # Timeout reached, kill the process
+    echo "Error: Command timed out after $timeout seconds"
+    kill -TERM "$cmd_pid" 2>/dev/null
+    sleep 2
+    kill -KILL "$cmd_pid" 2>/dev/null
+    exit 1
+}
 
 # Create build directory if it doesn't exist
 mkdir -p "$BUILD_DIR"
@@ -58,7 +100,7 @@ fi
 
 # Download dependencies
 echo "Downloading dependencies..."
-go mod download
+run_with_timeout $TIMEOUT_SECONDS go mod download
 
 # Run tests if not skipped
 if [[ $SKIP_TESTS -eq 0 ]]; then
@@ -66,12 +108,12 @@ if [[ $SKIP_TESTS -eq 0 ]]; then
   
   if [[ $SKIP_COVERAGE -eq 0 ]]; then
     echo "Generating coverage report..."
-    go test -race -coverprofile=coverage.out -covermode=atomic ./...
+    run_with_timeout $TIMEOUT_SECONDS go test -race -coverprofile=coverage.out -covermode=atomic ./...
     go tool cover -html=coverage.out -o coverage.html
     mv coverage.html "$BUILD_DIR/coverage.html"
     echo "Coverage report generated at $BUILD_DIR/coverage.html"
   else
-    go test -race ./...
+    run_with_timeout $TIMEOUT_SECONDS go test -race ./...
   fi
 fi
 
@@ -80,13 +122,13 @@ echo "Building binary..."
 if [[ $OBFUSCATE -eq 1 ]]; then
   if ! command -v garble &> /dev/null; then
     echo "Warning: garble not found, skipping obfuscation"
-    go build -o "$BUILD_DIR/$BINARY_NAME" ./cmd/velocimex
+    run_with_timeout $TIMEOUT_SECONDS go build -o "$BUILD_DIR/$BINARY_NAME" ./cmd/velocimex
   else
     echo "Obfuscating code with garble..."
-    garble -seed=random build -o "$BUILD_DIR/$BINARY_NAME" ./cmd/velocimex
+    run_with_timeout $TIMEOUT_SECONDS garble -seed=random build -o "$BUILD_DIR/$BINARY_NAME" ./cmd/velocimex
   fi
 else
-  go build -o "$BUILD_DIR/$BINARY_NAME" ./cmd/velocimex
+  run_with_timeout $TIMEOUT_SECONDS go build -o "$BUILD_DIR/$BINARY_NAME" ./cmd/velocimex
 fi
 
 # Compress the binary if requested

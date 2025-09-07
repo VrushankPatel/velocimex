@@ -362,7 +362,7 @@ func (sas *StrategySignalAlertSystem) triggerSignalAlert(rule *StrategyAlertRule
 	event := &AlertEvent{
 		ID:        fmt.Sprintf("signal_%s_%d", rule.ID, time.Now().UnixNano()),
 		Type:      "strategy_signal",
-		Severity:  AlertSeverityMedium,
+		Severity:  SeverityMedium,
 		Source:    "strategy_monitor",
 		Message:   fmt.Sprintf("Signal alert triggered for strategy %s", alert.Strategy),
 		Metadata: map[string]interface{}{
@@ -394,7 +394,7 @@ func (sas *StrategySignalAlertSystem) triggerPerformanceAlert(rule *StrategyAler
 	event := &AlertEvent{
 		ID:        fmt.Sprintf("performance_%s_%d", rule.ID, time.Now().UnixNano()),
 		Type:      "strategy_performance",
-		Severity:  AlertSeverityHigh,
+		Severity:  SeverityHigh,
 		Source:    "strategy_monitor",
 		Message:   fmt.Sprintf("Performance alert triggered for strategy %s", alert.Strategy),
 		Metadata: map[string]interface{}{
@@ -423,7 +423,7 @@ func (sas *StrategySignalAlertSystem) triggerRiskAlert(rule *StrategyAlertRule, 
 	event := &AlertEvent{
 		ID:        fmt.Sprintf("risk_%s_%d", rule.ID, time.Now().UnixNano()),
 		Type:      "strategy_risk",
-		Severity:  AlertSeverityCritical,
+		Severity:  SeverityCritical,
 		Source:    "strategy_monitor",
 		Message:   fmt.Sprintf("Risk alert triggered for strategy %s", alert.Strategy),
 		Metadata: map[string]interface{}{

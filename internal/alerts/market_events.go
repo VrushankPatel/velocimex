@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"velocimex/internal/logger"
 )
 
@@ -237,14 +238,47 @@ func (mas *MarketEventAlertSystem) ProcessArbitrageData(arbitrageData []map[stri
 	defer mas.mu.RUnlock()
 
 	for _, data := range arbitrageData {
-		symbol := data["symbol"].(string)
-		profitPercent := data["profit_percent"].(float64)
+		symbol, ok := data["symbol"].(string)
+		if !ok {
+			continue
+		}
+
+		profitPercent, ok := data["profit_percent"].(float64)
+		if !ok {
+			continue
+		}
 
 		for _, alert := range mas.arbitrageAlerts {
-			if alert.Symbol == symbol && !alert.Triggered {
-				if profitPercent >= alert.Threshold {
-					mas.triggerArbitrageAlert(alert, data)
+			if alert.Symbol == symbol && !alert.Triggered && profitPercent >= alert.Threshold {
+				// Create alert event
+				event := &AlertEvent{
+					ID:        uuid.New().String(),
+					Type:      string(MarketAlertArbitrage),
+					Severity:  SeverityHigh,
+					Source:    "arbitrage",
+					Message:   fmt.Sprintf("Arbitrage opportunity: %.4f%% profit for %s between %s and %s",
+						profitPercent, alert.Symbol, data["buy_exchange"], data["sell_exchange"]),
+					Metadata:  nil,
+					Timestamp: time.Now(),
+					Data:      data,
 				}
+
+				// Send to alert engine
+				mas.engine.ProcessEvent(event)
+
+				// Log the alert
+				mas.logger.Info("market_alert", "Triggered arbitrage alert",
+					map[string]interface{}{
+						"symbol":         alert.Symbol,
+						"buy_exchange":   data["buy_exchange"],
+						"sell_exchange":  data["sell_exchange"],
+						"profit_percent": profitPercent,
+					})
+
+				// Update alert state
+				mas.mu.Lock()
+				alert.Triggered = true
+				mas.mu.Unlock()
 			}
 		}
 	}
@@ -271,7 +305,36 @@ func (mas *MarketEventAlertSystem) checkPriceAlert(rule *MarketAlertRule, data m
 
 	// Check condition
 	if mas.evaluatePriceCondition(alert) {
-		mas.triggerPriceAlert(rule, alert, data)
+		// Create alert event
+		event := &AlertEvent{
+			ID:        uuid.New().String(),
+			Type:      string(MarketAlertPrice),
+			Severity:  SeverityMedium,
+			Source:    "market",
+			Message:   fmt.Sprintf("Price alert for %s/%s: %.8f %s %.8f", 
+				alert.Symbol, alert.Exchange, 
+				alert.CurrentPrice, rule.Condition.Operator, rule.Threshold),
+			Metadata:  rule.Metadata,
+			Timestamp: time.Now(),
+			Data:      data,
+		}
+
+		// Send to alert engine
+		mas.engine.ProcessEvent(event)
+
+		// Log the alert
+		mas.logger.Info("market_alert", "Triggered price alert", 
+			map[string]interface{}{
+				"symbol":    alert.Symbol,
+				"exchange":  alert.Exchange,
+				"price":     alert.CurrentPrice,
+				"threshold": rule.Threshold,
+			})
+
+		// Update alert state
+		mas.mu.Lock()
+		alert.Triggered = true
+		mas.mu.Unlock()
 	}
 }
 
@@ -295,7 +358,37 @@ func (mas *MarketEventAlertSystem) checkVolumeAlert(rule *MarketAlertRule, data 
 
 	// Check condition
 	if mas.evaluateVolumeCondition(alert) {
-		mas.triggerVolumeAlert(rule, alert, data)
+		// Create alert event
+		event := &AlertEvent{
+			ID:        uuid.New().String(),
+			Type:      string(MarketAlertVolume),
+			Severity:  SeverityMedium,
+			Source:    "market",
+			Message:   fmt.Sprintf("Volume alert for %s/%s: %.2f %s %.2f (avg: %.2f)",
+				alert.Symbol, alert.Exchange,
+				alert.CurrentVolume, rule.Condition.Operator, rule.Threshold, alert.AverageVolume),
+			Metadata:  rule.Metadata,
+			Timestamp: time.Now(),
+			Data:      data,
+		}
+
+		// Send to alert engine
+		mas.engine.ProcessEvent(event)
+
+		// Log the alert
+		mas.logger.Info("market_alert", "Triggered volume alert",
+			map[string]interface{}{
+				"symbol":         alert.Symbol,
+				"exchange":       alert.Exchange,
+				"volume":         alert.CurrentVolume,
+				"average_volume": alert.AverageVolume,
+				"threshold":      rule.Threshold,
+			})
+
+		// Update alert state
+		mas.mu.Lock()
+		alert.Triggered = true
+		mas.mu.Unlock()
 	}
 }
 
@@ -319,7 +412,36 @@ func (mas *MarketEventAlertSystem) checkVolatilityAlert(rule *MarketAlertRule, d
 
 	// Check condition
 	if mas.evaluateVolatilityCondition(alert) {
-		mas.triggerVolatilityAlert(rule, alert, data)
+		// Create alert event
+		event := &AlertEvent{
+			ID:        uuid.New().String(),
+			Type:      string(MarketAlertVolatility),
+			Severity:  SeverityHigh,
+			Source:    "market",
+			Message:   fmt.Sprintf("Volatility alert for %s/%s: %.4f %s %.4f",
+				alert.Symbol, alert.Exchange,
+				alert.CurrentVolatility, rule.Condition.Operator, rule.Threshold),
+			Metadata:  rule.Metadata,
+			Timestamp: time.Now(),
+			Data:      data,
+		}
+
+		// Send to alert engine
+		mas.engine.ProcessEvent(event)
+
+		// Log the alert
+		mas.logger.Info("market_alert", "Triggered volatility alert",
+			map[string]interface{}{
+				"symbol":     alert.Symbol,
+				"exchange":   alert.Exchange,
+				"volatility": alert.CurrentVolatility,
+				"threshold":  rule.Threshold,
+			})
+
+		// Update alert state
+		mas.mu.Lock()
+		alert.Triggered = true
+		mas.mu.Unlock()
 	}
 }
 
@@ -362,38 +484,8 @@ func (mas *MarketEventAlertSystem) evaluateVolatilityCondition(alert *Volatility
 		return alert.CurrentVolatility > alert.Threshold
 	case "below":
 		return alert.CurrentVolatility < alert.Threshold
-	default:
-		return false
 	}
-}
-
-// triggerPriceAlert triggers a price alert
-func (mas *MarketEventAlertSystem) triggerPriceAlert(rule *MarketAlertRule, alert *PriceAlert, data map[string]interface{}) {
-	mas.mu.Lock()
-	alert.Triggered = true
-	mas.mu.Unlock()
-
-	// Create alert event
-	event := &AlertEvent{
-		ID:        fmt.Sprintf("price_%s_%d", rule.ID, time.Now().UnixNano()),
-		Type:      "market_price",
-		Severity:  AlertSeverityMedium,
-		Source:    "market_monitor",
-		Message:   fmt.Sprintf("Price alert triggered for %s on %s", alert.Symbol, alert.Exchange),
-		Metadata: map[string]interface{}{
-			"symbol":         alert.Symbol,
-			"exchange":       alert.Exchange,
-			"current_price":  alert.CurrentPrice,
-			"previous_price": alert.PreviousPrice,
-			"threshold":      alert.Threshold,
-			"condition":      alert.Condition.Operator,
-			"rule_id":        rule.ID,
-		},
-		Timestamp: time.Now(),
-	}
-
-	// Process event
-	mas.engine.ProcessEvent(event)
+	return false
 }
 
 // triggerVolumeAlert triggers a volume alert
@@ -404,25 +496,29 @@ func (mas *MarketEventAlertSystem) triggerVolumeAlert(rule *MarketAlertRule, ale
 
 	// Create alert event
 	event := &AlertEvent{
-		ID:        fmt.Sprintf("volume_%s_%d", rule.ID, time.Now().UnixNano()),
-		Type:      "market_volume",
-		Severity:  AlertSeverityMedium,
-		Source:    "market_monitor",
-		Message:   fmt.Sprintf("Volume alert triggered for %s on %s", alert.Symbol, alert.Exchange),
-		Metadata: map[string]interface{}{
-			"symbol":        alert.Symbol,
-			"exchange":      alert.Exchange,
-			"current_volume": alert.CurrentVolume,
-			"average_volume": alert.AverageVolume,
-			"threshold":     alert.Threshold,
-			"condition":     alert.Condition.Operator,
-			"rule_id":       rule.ID,
-		},
+		ID:        uuid.New().String(),
+		Type:      string(MarketAlertVolume),
+		Severity:  SeverityMedium, // Use the correct severity constant
+		Source:    "market",
+		Message:   fmt.Sprintf("Volume alert for %s/%s: %.2f %s %.2f (avg: %.2f)", 
+			alert.Symbol, alert.Exchange, 
+			alert.CurrentVolume, rule.Condition.Operator, rule.Threshold, alert.AverageVolume),
+		Metadata:  rule.Metadata,
 		Timestamp: time.Now(),
+		Data:      data,
 	}
 
-	// Process event
+	// Send to alert engine
 	mas.engine.ProcessEvent(event)
+
+	mas.logger.Info("market_alert", "Triggered volume alert", 
+		map[string]interface{}{
+			"symbol":         alert.Symbol,
+			"exchange":       alert.Exchange,
+			"volume":         alert.CurrentVolume,
+			"average_volume": alert.AverageVolume,
+			"threshold":      rule.Threshold,
+		})
 }
 
 // triggerVolatilityAlert triggers a volatility alert
@@ -433,24 +529,28 @@ func (mas *MarketEventAlertSystem) triggerVolatilityAlert(rule *MarketAlertRule,
 
 	// Create alert event
 	event := &AlertEvent{
-		ID:        fmt.Sprintf("volatility_%s_%d", rule.ID, time.Now().UnixNano()),
-		Type:      "market_volatility",
-		Severity:  AlertSeverityHigh,
-		Source:    "market_monitor",
-		Message:   fmt.Sprintf("Volatility alert triggered for %s on %s", alert.Symbol, alert.Exchange),
-		Metadata: map[string]interface{}{
-			"symbol":           alert.Symbol,
-			"exchange":         alert.Exchange,
-			"current_volatility": alert.CurrentVolatility,
-			"threshold":        alert.Threshold,
-			"condition":        alert.Condition.Operator,
-			"rule_id":          rule.ID,
-		},
+		ID:        uuid.New().String(),
+		Type:      string(MarketAlertVolatility),
+		Severity:  SeverityHigh, // Use the correct severity constant
+		Source:    "market",
+		Message:   fmt.Sprintf("Volatility alert for %s/%s: %.2f %s %.2f", 
+			alert.Symbol, alert.Exchange, 
+			alert.CurrentVolatility, rule.Condition.Operator, rule.Threshold),
+		Metadata:  rule.Metadata,
 		Timestamp: time.Now(),
+		Data:      data,
 	}
 
 	// Process event
 	mas.engine.ProcessEvent(event)
+
+	mas.logger.Info("market_alert", "Triggered volatility alert", 
+		map[string]interface{}{
+			"symbol":     alert.Symbol,
+			"exchange":   alert.Exchange,
+			"volatility": alert.CurrentVolatility,
+			"threshold":  rule.Threshold,
+		})
 }
 
 // triggerArbitrageAlert triggers an arbitrage alert
@@ -461,22 +561,18 @@ func (mas *MarketEventAlertSystem) triggerArbitrageAlert(alert *ArbitrageAlert, 
 
 	// Create alert event
 	event := &AlertEvent{
-		ID:        fmt.Sprintf("arbitrage_%s_%d", alert.Symbol, time.Now().UnixNano()),
-		Type:      "arbitrage_opportunity",
-		Severity:  AlertSeverityHigh,
-		Source:    "arbitrage_monitor",
-		Message:   fmt.Sprintf("Arbitrage opportunity detected for %s", alert.Symbol),
-		Metadata: map[string]interface{}{
-			"symbol":         alert.Symbol,
-			"buy_exchange":   data["buy_exchange"],
-			"sell_exchange":  data["sell_exchange"],
-			"profit_percent": data["profit_percent"],
-			"threshold":      alert.Threshold,
-		},
+		ID:        uuid.New().String(),
+		Type:      string(MarketAlertArbitrage),
+		Severity:  SeverityHigh, // Use the correct severity constant
+		Source:    "arbitrage",
+		Message:   fmt.Sprintf("Arbitrage opportunity: %.4f%% profit for %s between %s and %s", 
+			data["profit_percent"].(float64), alert.Symbol, data["buy_exchange"], data["sell_exchange"]),
+		Metadata:  nil,
 		Timestamp: time.Now(),
+		Data:      data,
 	}
 
-	// Process event
+	// Send to alert engine
 	mas.engine.ProcessEvent(event)
 }
 
